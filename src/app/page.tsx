@@ -1,103 +1,115 @@
-import Image from "next/image";
+'use client'
 
-export default function Home() {
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/components/providers/AuthProvider'
+
+export default function HomePage() {
+  const router = useRouter()
+  const { user, loading, role } = useAuth()
+  const [showFallback, setShowFallback] = useState(false)
+  const [hasAttemptedRedirect, setHasAttemptedRedirect] = useState(false)
+
+  useEffect(() => {
+    console.log('🏠 Root page render:', { 
+      loading, 
+      hasUser: !!user, 
+      userId: user?.id,
+      role,
+      userPhone: user?.phone,
+      hasAttemptedRedirect
+    })
+  })
+
+  // Auto-redirect logic
+  useEffect(() => {
+    if (loading || hasAttemptedRedirect) {
+      return
+    }
+
+    if (user && role) {
+      console.log('🏠 Root page: User authenticated, attempting auto-redirect to dashboard')
+      setHasAttemptedRedirect(true)
+      // Use window.location for reliable redirect
+      window.location.href = '/dashboard'
+      return
+    }
+
+    if (!loading && !user) {
+      console.log('🏠 Root page: No user, attempting auto-redirect to login')
+      setHasAttemptedRedirect(true)
+      window.location.href = '/login'
+      return
+    }
+  }, [user, loading, role, hasAttemptedRedirect])
+
+  // Show fallback buttons after 2 seconds if redirect didn't work
+  useEffect(() => {
+    const fallbackTimeout = setTimeout(() => {
+      console.log('🏠 Root page: Showing fallback options')
+      setShowFallback(true)
+    }, 2000)
+
+    return () => clearTimeout(fallbackTimeout)
+  }, [])
+
+  // Show loading state while redirecting
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <div className="min-h-screen flex items-center justify-center bg-background px-4">
+      <div className="text-center space-y-4 max-w-md">
+        {/* App Icon */}
+        <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-primary/10 mb-4">
+          <span className="text-3xl">🏸</span>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+        
+        {/* Loading Animation */}
+        <div className="flex justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+        
+        {/* App Name */}
+        <h1 className="text-xl font-semibold text-foreground">
+          Badminton Cost Tracker
+        </h1>
+        
+        <p className="text-sm text-muted-foreground">
+          {showFallback ? 'Choose where to go:' : 'Loading...'}
+        </p>
+
+        {/* Debug info */}
+        {showFallback && (
+          <div className="text-xs text-muted-foreground bg-muted/50 p-3 rounded-lg mb-4">
+            <p>Debug: loading={loading ? 'true' : 'false'}, user={user ? 'yes' : 'no'}, role={role || 'none'}</p>
+          </div>
+        )}
+
+        {/* Navigation buttons */}
+        {showFallback && (
+          <div className="mt-6 space-y-3">
+            <a
+              href="/dashboard"
+              className="block w-full bg-primary text-primary-foreground px-6 py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors text-center"
+            >
+              Go to Dashboard (Link)
+            </a>
+            <button
+              onClick={() => {
+                console.log('🏠 Manual navigation to dashboard')
+                window.location.href = '/dashboard'
+              }}
+              className="w-full bg-primary text-primary-foreground px-6 py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors"
+            >
+              Go to Dashboard (Button)
+            </button>
+            <a
+              href="/login"
+              className="block w-full bg-secondary text-secondary-foreground px-6 py-3 rounded-lg font-medium hover:bg-secondary/90 transition-colors text-center"
+            >
+              Go to Login (Link)
+            </a>
+          </div>
+        )}
+      </div>
     </div>
-  );
+  )
 }
