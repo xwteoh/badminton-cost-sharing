@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect, forwardRef } from 'react'
-import { cn } from '@/lib/utils/cn'
+
 import { money, parseMoney, formatMoney, isValidMoneyInput, type MoneyInput } from '@/lib/calculations/money'
+import { cn } from '@/lib/utils/cn'
 
 export interface MoneyInputProps {
   /** Current monetary value (Decimal, number, or string) */
@@ -56,10 +57,11 @@ export const MoneyInput = forwardRef<HTMLInputElement, MoneyInputProps>(
     const [inputValue, setInputValue] = useState('')
     const [isFocused, setIsFocused] = useState(false)
     const [isValid, setIsValid] = useState(true)
+    const [hasBeenTouched, setHasBeenTouched] = useState(false)
 
-    // Initialize input value from prop
+    // Initialize input value from prop - only on first load or when not touched
     useEffect(() => {
-      if (value !== undefined) {
+      if (!hasBeenTouched && value !== undefined) {
         try {
           const amount = money(value)
           setInputValue(formatMoney(amount, { 
@@ -69,15 +71,19 @@ export const MoneyInput = forwardRef<HTMLInputElement, MoneyInputProps>(
         } catch {
           setInputValue('')
         }
-      } else {
+      } else if (!hasBeenTouched && value === undefined) {
         setInputValue('')
       }
-    }, [value, decimalPlaces])
+    }, [value, decimalPlaces, hasBeenTouched])
 
     const validateValue = (rawValue: string): boolean => {
       if (!rawValue.trim()) return true // Empty is valid
 
-      if (!isValidMoneyInput(rawValue)) return false
+      // During typing, only check basic pattern - be very lenient
+      const basicPattern = /^[0-9]*\.?[0-9]*$/
+      if (!basicPattern.test(rawValue.replace(/[$,\s]/g, ''))) {
+        return false
+      }
 
       try {
         const amount = parseMoney(rawValue)
@@ -90,29 +96,31 @@ export const MoneyInput = forwardRef<HTMLInputElement, MoneyInputProps>(
         
         return true
       } catch {
-        return false
+        // If parsing fails, it's probably still being typed - allow it
+        return true
       }
     }
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const rawValue = e.target.value
       
-      // Allow only numbers, decimal point, commas, and dollar sign
-      const filteredValue = rawValue.replace(/[^0-9.,]/g, '')
+      // Mark as touched to prevent external updates
+      setHasBeenTouched(true)
       
-      setInputValue(filteredValue)
+      // During typing, be extremely permissive - just store the value
+      setInputValue(rawValue)
       
-      const valid = validateValue(filteredValue)
-      setIsValid(valid)
+      // Always consider it valid while typing
+      setIsValid(true)
       
       // Call onChange with the raw string value
-      onChange?.(filteredValue, valid)
+      onChange?.(rawValue, true)
     }
 
     const handleBlur = () => {
       setIsFocused(false)
       
-      if (inputValue.trim() && isValid) {
+      if (inputValue.trim()) {
         try {
           // Format the value properly on blur
           const amount = parseMoney(inputValue)
@@ -121,17 +129,25 @@ export const MoneyInput = forwardRef<HTMLInputElement, MoneyInputProps>(
             decimalPlaces 
           })
           setInputValue(formatted)
+          
+          // Re-validate after formatting
+          const finalValid = validateValue(formatted)
+          setIsValid(finalValid)
+          onChange?.(formatted, finalValid)
         } catch {
-          // Keep original value if parsing fails
+          // If parsing fails, mark as invalid
+          setIsValid(false)
+          onChange?.(inputValue, false)
         }
       }
     }
 
     const handleFocus = () => {
       setIsFocused(true)
+      setHasBeenTouched(true)
     }
 
-    const hasError = !isValid || !!error
+    const hasError = !!error
     const displayValue = isFocused ? inputValue : inputValue
 
     return (
@@ -145,7 +161,7 @@ export const MoneyInput = forwardRef<HTMLInputElement, MoneyInputProps>(
         
         <div className="relative">
           {showCurrency && (
-            <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground pointer-events-none">
+            <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground pointer-events-none font-medium">
               $
             </div>
           )}
@@ -162,22 +178,23 @@ export const MoneyInput = forwardRef<HTMLInputElement, MoneyInputProps>(
             disabled={disabled}
             autoFocus={autoFocus}
             className={cn(
-              // Base styles
-              'flex h-12 w-full rounded-lg border bg-background text-right',
+              // Modern base styles with design system
+              'flex h-12 w-full rounded-lg border bg-background text-right text-foreground',
               'px-3 py-2 text-base file:border-0 file:bg-transparent file:text-sm file:font-medium',
               'placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50',
-              'focus:outline-none focus:ring-2 focus:ring-offset-2',
+              'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
+              'transition-all duration-200',
               
               // Currency padding
               showCurrency ? 'pl-8' : 'pl-3',
               
-              // States
+              // Modern states with design system colors
               hasError 
-                ? 'border-destructive focus:ring-destructive' 
-                : 'border-border focus:ring-primary',
+                ? 'border-destructive focus:ring-destructive focus:border-destructive' 
+                : 'border-border focus:ring-ring focus:border-ring hover:border-ring/60',
               
-              // Touch-friendly
-              'min-h-[44px] touch-manipulation'
+              // Touch-friendly with modern shadows
+              'min-h-[44px] touch-manipulation shadow-sm hover:shadow-md focus:shadow-md'
             )}
             {...props}
           />
@@ -190,8 +207,8 @@ export const MoneyInput = forwardRef<HTMLInputElement, MoneyInputProps>(
           </p>
         )}
 
-        {/* Validation Error */}
-        {!isValid && !error && inputValue.trim() && (
+        {/* Validation Error - only show if explicitly invalid after blur */}
+        {!isValid && !error && inputValue.trim() && !isFocused && (
           <p className="text-sm text-destructive" role="alert">
             Please enter a valid amount
           </p>

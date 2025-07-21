@@ -4,7 +4,7 @@
 1. [Project Overview](#project-overview)
 2. [App Architecture](#app-architecture)
 3. [Target Users](#target-users)
-4. [MVP Features Scope](#mvp-features-scope)
+4. [Enterprise Features Scope](#enterprise-features-scope)
 5. [Technical Stack](#technical-stack)
 6. [Business Rules & Implementation](#business-rules--implementation)
 7. [User Experience Philosophy](#user-experience-philosophy)
@@ -18,7 +18,7 @@
 ## 🔄 **Document Status & Change Tracking**
 
 **Document Type**: Master Requirements & Implementation Guide  
-**Last Updated**: 2025-07-13  
+**Last Updated**: 2025-07-21  
 **Change Detection**: Active (Claude monitors implementation vs documentation)  
 **Priority Level**: 🔴 Critical - Immediate updates required for implementation changes  
 
@@ -132,31 +132,58 @@ Backend (Supabase)
 
 ---
 
-## 4. MVP Features Scope
+## 4. Enterprise Features Scope
 
-### Core Features (Must Have)
+### Core Features (Must Have) - ✅ **COMPLETE**
 | Feature | Description | Priority | Status |
 |---------|-------------|----------|--------|
-| Phone + OTP Authentication | Supabase Auth for all users | P0 | Planned |
-| Session Cost Tracking | Record attendance and calculate costs | P0 | Planned |
-| Player Debt Management | Running balance with payment recording | P0 | Planned |
-| Organizer Dashboard | Complete session and payment management | P0 | Planned |
-| Player Self-Service | Balance and history viewing | P0 | Planned |
-| Variable Session Costs | Court rate + shuttlecock calculation | P0 | Planned |
-| Temporary Player Support | Drop-in players with equal cost sharing | P0 | Planned |
-| Session Planning | 2-week advance session creation | P0 | Planned |
+| Phone + OTP Authentication | Supabase Auth with phone normalization | P0 | ✅ Complete (Live) |
+| Session Cost Tracking | Record attendance and calculate costs | P0 | ✅ Complete (Live) |
+| Player Debt Management | Running balance with payment recording | P0 | ✅ Complete (Live) |
+| Organizer Dashboard | Complete session and payment management | P0 | ✅ Complete (Live) |
+| Player Self-Service | Balance and history viewing | P0 | ✅ Complete (Live) |
+| Variable Session Costs | Court rate + shuttlecock calculation | P0 | ✅ Complete (Live) |
+| Temporary Player Support | Drop-in players with equal cost sharing | P0 | ✅ Complete (Live) |
+| Session Planning | 2-week advance session creation | P0 | ✅ Complete (Live) |
+| Player Management | Add/edit/manage all group players | P0 | ✅ Complete (Live) |
+| Role-Based Access Control | Player vs organizer access restrictions | P0 | ✅ Complete (Live) |
+| Database Integration | Full Supabase integration with service layer | P0 | ✅ Complete (Live) |
 
-### Secondary Features (Nice to Have)
+### Security & Access Features - ✅ **COMPLETE**
+| Feature | Description | Priority | Status |
+|---------|-------------|----------|--------|
+| Phone Number Normalization | Singapore number format handling | P0 | ✅ Complete (Live) |
+| Role-Based Authentication | Auto-assignment with manual override | P0 | ✅ Complete (Live) |
+| Page Access Control | RoleGuard component protection | P0 | ✅ Complete (Live) |
+| Database Security Functions | RLS bypass for phone matching | P0 | ✅ Complete (Live) |
+| Public Phone Check System | Authentication validation via database view | P0 | ✅ Complete (Live) |
+
+### Enterprise Data Management - ✅ **COMPLETE**
+| Feature | Description | Priority | Status |
+|---------|-------------|----------|--------|
+| Data Export System | Complete organizer data backup to JSON | P0 | ✅ Complete (Live) |
+| Data Import System | Data restoration with validation | P0 | ✅ Complete (Live) |
+| Settings Management | Admin tools integration | P0 | ✅ Complete (Live) |
+
+### Premium User Experience - ✅ **COMPLETE**
+| Feature | Description | Priority | Status |
+|---------|-------------|----------|--------|
+| Premium UI/UX Design | Glassmorphism effects across all screens | P0 | ✅ Complete (Live) |
+| Session Conversion Workflow | Auto-select players from planned sessions | P0 | ✅ Complete (Live) |
+| Financial Precision | 1 decimal place rounding accuracy | P0 | ✅ Complete (Live) |
+| Enhanced Date Formats | Year inclusion for session clarity | P0 | ✅ Complete (Live) |
+| Data Integrity Fixes | Session count consistency | P0 | ✅ Complete (Live) |
+
+### Future Enhancements (Nice to Have)
 | Feature | Description | Priority | Status |
 |---------|-------------|----------|--------|
 | Payment Notifications | Automated debt reminders | P1 | Future |
 | Advanced Analytics | Cost trends and player statistics | P1 | Future |
 | Multi-group Support | Multiple badminton groups per organizer | P1 | Future |
 
-### Out of Scope (Future)
+### Out of Scope (Current Version)
 - RSVP functionality for planned sessions
 - Automated payment processing integration
-- Advanced reporting and export features
 - Player self-registration capabilities
 
 ---
@@ -209,9 +236,10 @@ Backend (Supabase)
 
 #### Rule 3: Role-Based Access Control
 - **Description**: Organizers manage all data, players only see their own information
-- **Implementation**: Supabase RLS policies based on user role
-- **Validation**: Phone number authentication, automatic role assignment
-- **Error Handling**: Clear permission denied messages
+- **Implementation**: Supabase RLS policies + RoleGuard component protection
+- **Validation**: Phone number authentication, default 'player' role assignment
+- **Error Handling**: Clear permission denied messages with automatic redirects
+- **Access Control**: RoleGuard component prevents unauthorized page access
 
 #### Rule 4: Temporary Player Handling
 - **Description**: Drop-in players share equal costs but don't become permanent members
@@ -334,6 +362,7 @@ interface Payment {
 - **get_player_balance()**: Calculate current debt/credit for player
 - **complete_session()**: Convert planned session to completed with costs
 - **get_players_with_balances()**: Dashboard overview for organizer
+- **get_player_by_user_phone()**: Match authenticated users to player records with phone normalization
 
 ### State Management
 ```typescript
@@ -400,16 +429,22 @@ interface AppState {
 ## 📚 Documentation References
 
 ### Core Documentation
-- **Implementation Status**: `docs/implementation_status.md` - Feature completion tracking
-- **Screen Specifications**: `docs/screen_specifications.md` - Detailed UI/UX specs
-- **Design System**: `docs/design_system.md` - Component library and tokens
-- **Lessons Learned**: `docs/lessons_learned.md` - Development insights and solutions
+- **Implementation Status**: `docs/implementation_status.md` - Feature completion tracking (MVP Complete)
+- **Screen Specifications**: `docs/screen_specifications.md` - Detailed UI/UX specs with role-based access
+- **Design System**: `docs/design_system.md` - Component library and tokens including RoleGuard
+- **Lessons Learned**: `docs/lessons_learned.md` - Development insights including authentication fixes
 
 ### Development Documentation
 - **Folder Structure**: `docs/folder_structure.md` - Project organization
 - **Coding Standards**: `docs/coding_standards.md` - Code style and conventions
+- **Security Guide**: `docs/security_standards.md` - OWASP compliance and RLS implementation
 - **Change Log**: `docs/docs_change_log.md` - Documentation update history
 
 ### Session Management
 - **Current State**: `SESSION_STATE.md` - Active session tracking
 - **Claude Guidance**: `CLAUDE.md` - AI assistant instructions
+
+### Technical Architecture
+- **Database Schema**: `docs/plans/database_schema.md` - Complete database design
+- **Security Implementation**: `docs/plans/supabase_rls_setup.md` - RLS policies and access control
+- **Authentication Flow**: Role-based authentication with phone normalization

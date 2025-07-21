@@ -1,124 +1,435 @@
 @import "tailwindcss";
 
 :root {
-  /* Base Colors */
-  --background: #ffffff;
-  --foreground: #111827;
-  --card: #ffffff;
-  --card-foreground: #111827;
-  --popover: #ffffff;
-  --popover-foreground: #111827;
+  /* Modern Base Colors - Sophisticated neutrals with warmth */
+  --background: 0 0% 100%;
+  --background-subtle: 240 12% 98%;
+  --foreground: 240 10% 3.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 240 10% 3.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 10% 3.9%;
   
-  /* Primary Colors (Badminton Green) */
-  --primary: #059669;
-  --primary-foreground: #ffffff;
+  /* Modern Primary Colors - Sophisticated gradient-based palette */
+  --primary: 250 84% 54%;
+  --primary-hover: 250 84% 60%;
+  --primary-active: 250 84% 48%;
+  --primary-foreground: 0 0% 100%;
+  --primary-50: 250 100% 97%;
+  --primary-100: 250 96% 93%;
+  --primary-500: 250 84% 54%;
+  --primary-600: 250 84% 48%;
+  --primary-700: 250 84% 42%;
+  --primary-900: 250 84% 24%;
   
-  /* Secondary Colors */
-  --secondary: #f3f4f6;
-  --secondary-foreground: #374151;
+  /* Modern Secondary Colors - Sophisticated grays */
+  --secondary: 240 4.8% 95.9%;
+  --secondary-foreground: 240 5.9% 10%;
+  --secondary-hover: 240 4.8% 93%;
+  --secondary-active: 240 4.8% 91%;
   
-  /* Muted Colors */
-  --muted: #f9fafb;
-  --muted-foreground: #6b7280;
+  /* Modern Muted Colors */
+  --muted: 240 4.8% 95.9%;
+  --muted-foreground: 240 3.8% 46.1%;
   
-  /* Accent Colors */
-  --accent: #f3f4f6;
-  --accent-foreground: #374151;
+  /* Modern Accent Colors */
+  --accent: 240 4.8% 95.9%;
+  --accent-foreground: 240 5.9% 10%;
   
-  /* Destructive Colors */
-  --destructive: #dc2626;
-  --destructive-foreground: #ffffff;
+  /* Modern Destructive Colors */
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
   
-  /* Border & Input */
-  --border: #e5e7eb;
-  --input: #e5e7eb;
-  --ring: #059669;
+  /* Modern Success Colors */
+  --success: 142 76% 36%;
+  --success-foreground: 0 0% 100%;
+  --success-hover: 142 76% 42%;
   
-  /* Financial Status Colors */
-  --money-positive: #059669;
-  --money-negative: #dc2626;
-  --money-neutral: #6b7280;
+  /* Modern Warning Colors */
+  --warning: 38 92% 50%;
+  --warning-foreground: 0 0% 100%;
+  --warning-hover: 38 92% 56%;
   
-  /* Singapore Theme */
-  --singapore-red: #dc2626;
-  --paynow-blue: #0066cc;
+  /* Modern Border & Input */
+  --border: 240 5.9% 90%;
+  --input: 240 5.9% 90%;
+  --ring: 250 84% 54%;
   
-  /* Radius */
-  --radius: 0.5rem;
+  /* Modern Financial Status Colors - Enhanced with gradients */
+  --money-positive: 142 76% 36%;
+  --money-positive-light: 142 76% 92%;
+  --money-negative: 0 84% 60%;
+  --money-negative-light: 0 84% 95%;
+  --money-neutral: 240 3.8% 46.1%;
+  --money-neutral-light: 240 5.9% 90%;
+  
+  /* Modern Singapore Theme */
+  --singapore-red: 0 84% 60%;
+  --paynow-blue: 212 100% 40%;
+  --badminton-green: 142 76% 36%;
+  
+  /* Modern Radius System */
+  --radius: 0.75rem;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-2xl: 2rem;
+  
+  /* Modern Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+  
+  /* Modern Gradients */
+  --gradient-primary: linear-gradient(135deg, hsl(250, 84%, 54%) 0%, hsl(250, 84%, 48%) 100%);
+  --gradient-success: linear-gradient(135deg, hsl(142, 76%, 36%) 0%, hsl(142, 76%, 42%) 100%);
+  --gradient-warning: linear-gradient(135deg, hsl(38, 92%, 50%) 0%, hsl(38, 92%, 56%) 100%);
+  --gradient-card: linear-gradient(135deg, hsl(0, 0%, 100%) 0%, hsl(240, 12%, 98%) 100%);
+  --gradient-subtle: linear-gradient(135deg, hsl(240, 12%, 98%) 0%, hsl(240, 4.8%, 95.9%) 100%);
+  
+  /* Modern Glassmorphism */
+  --glass-background: hsla(0, 0%, 100%, 0.85);
+  --glass-border: hsla(240, 5.9%, 90%, 0.2);
+  --glass-backdrop: blur(12px);
 }
 
 @theme inline {
-  /* Color System */
+  /* Modern Color System */
   --color-background: var(--background);
+  --color-background-subtle: var(--background-subtle);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
+  
+  /* Modern Primary Colors */
   --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-active: var(--primary-active);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-50: var(--primary-50);
+  --color-primary-100: var(--primary-100);
+  --color-primary-500: var(--primary-500);
+  --color-primary-600: var(--primary-600);
+  --color-primary-700: var(--primary-700);
+  --color-primary-900: var(--primary-900);
+  
+  /* Modern Secondary Colors */
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary-hover: var(--secondary-hover);
+  --color-secondary-active: var(--secondary-active);
+  
+  /* Modern Muted Colors */
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+  
+  /* Modern Accent Colors */
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  
+  /* Modern Status Colors */
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-hover: var(--success-hover);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-hover: var(--warning-hover);
+  
+  /* Modern Border & Input */
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
   
-  /* Financial Colors */
+  /* Modern Financial Colors */
   --color-money-positive: var(--money-positive);
+  --color-money-positive-light: var(--money-positive-light);
   --color-money-negative: var(--money-negative);
+  --color-money-negative-light: var(--money-negative-light);
   --color-money-neutral: var(--money-neutral);
+  --color-money-neutral-light: var(--money-neutral-light);
   
-  /* Typography */
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Modern Typography */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+  --font-display: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   
-  /* Border Radius */
-  --radius: var(--radius);
+  /* Modern Border Radius */
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+  --radius-2xl: var(--radius-2xl);
   
-  /* Spacing (Mobile-first touch targets) */
+  /* Modern Shadows */
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-xl: var(--shadow-xl);
+  --shadow-2xl: var(--shadow-2xl);
+  --shadow-inner: var(--shadow-inner);
+  
+  /* Modern Gradients */
+  --gradient-primary: var(--gradient-primary);
+  --gradient-success: var(--gradient-success);
+  --gradient-warning: var(--gradient-warning);
+  --gradient-card: var(--gradient-card);
+  --gradient-subtle: var(--gradient-subtle);
+  
+  /* Modern Glassmorphism */
+  --glass-background: var(--glass-background);
+  --glass-border: var(--glass-border);
+  --glass-backdrop: var(--glass-backdrop);
+  
+  /* Modern Spacing (Mobile-first touch targets) */
   --touch-target-min: 44px;
   --touch-target-preferred: 48px;
   --touch-target-comfortable: 56px;
+  --touch-target-large: 64px;
   
-  /* Breakpoints for responsive design */
+  /* Modern Breakpoints */
   --mobile: 320px;
   --tablet: 768px;
   --desktop: 1024px;
   --wide: 1200px;
+  --ultra-wide: 1440px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0f172a;
-    --foreground: #f1f5f9;
-    --card: #1e293b;
-    --card-foreground: #f1f5f9;
-    --popover: #1e293b;
-    --popover-foreground: #f1f5f9;
-    --primary: #10b981;
-    --primary-foreground: #0f172a;
-    --secondary: #1e293b;
-    --secondary-foreground: #f1f5f9;
-    --muted: #1e293b;
-    --muted-foreground: #94a3b8;
-    --accent: #1e293b;
-    --accent-foreground: #f1f5f9;
-    --destructive: #ef4444;
-    --destructive-foreground: #f1f5f9;
-    --border: #334155;
-    --input: #334155;
-    --ring: #10b981;
-  }
+/* Dark mode disabled - App designed for light mode only with glassmorphism effects */
+/* Force light mode for consistent glassmorphism design */
+:root {
+  color-scheme: light;
+}
+
+/* Modern Base Styles */
+* {
+  border-color: hsl(var(--border));
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  color: hsl(var(--foreground));
+  background: hsl(var(--background));
+  font-family: var(--font-sans);
+  /* Improved mobile font rendering */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Prevent zooming on iOS input focus */
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+/* Modern interactive elements */
+button, input, textarea, select {
+  font-size: 16px; /* Prevent iOS zoom */
+  font-family: inherit;
+}
+
+/* Modern focus styles */
+:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Modern scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground));
+  border-radius: 8px;
+  border: 1px solid hsl(var(--muted));
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--foreground));
+}
+
+/* Modern mobile interactions */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Modern selection */
+::selection {
+  background: hsl(var(--primary) / 0.2);
+  color: hsl(var(--primary-foreground));
+}
+
+/* Modern safe area handling */
+@supports (padding: max(0px)) {
+  .safe-area-inset-top {
+    padding-top: max(1rem, env(safe-area-inset-top));
+  }
+  
+  .safe-area-inset-bottom {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+}
+
+/* Modern financial display */
+.money-display {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  letter-spacing: -0.025em;
+}
+
+/* Modern money color classes */
+.text-money-positive {
+  color: hsl(var(--money-positive));
+}
+
+.text-money-negative {
+  color: hsl(var(--money-negative));
+}
+
+.text-money-neutral {
+  color: hsl(var(--money-neutral));
+}
+
+.text-warning {
+  color: hsl(var(--warning));
+}
+
+/* Modern touch targets */
+.touch-target {
+  min-height: var(--touch-target-min);
+  min-width: var(--touch-target-min);
+}
+
+/* Modern button styles */
+.modern-button {
+  background: var(--gradient-primary);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-lg);
+  font-weight: 600;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+.modern-button:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.modern-button:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Modern card styles */
+.modern-card {
+  background: var(--gradient-card);
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease;
+}
+
+.modern-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+/* Modern glassmorphism */
+.glass-card {
+  background: var(--glass-background);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: var(--glass-backdrop);
+  border-radius: var(--radius-lg);
+}
+
+/* Modern PayNow styling */
+.paynow-button {
+  background: linear-gradient(135deg, hsl(var(--paynow-blue)) 0%, hsl(var(--paynow-blue) / 0.8) 100%);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-lg);
+  font-weight: 600;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+.paynow-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px hsl(var(--paynow-blue) / 0.3);
+}
+
+/* Modern responsive images */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Modern animation preferences */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Modern loading animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slideIn {
+  animation: slideIn 0.3s ease-out;
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }

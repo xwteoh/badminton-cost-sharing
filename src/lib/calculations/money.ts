@@ -23,10 +23,26 @@ export type MoneyInput = string | number | Decimal
  * Create a Money instance from various input types
  */
 export function money(value: MoneyInput): Money {
+  // Handle null, undefined, empty string, and invalid values
+  if (value === null || value === undefined || value === '' || value === 'undefined' || value === 'null') {
+    return new Decimal(0)
+  }
+  
   try {
-    return new Decimal(value)
+    // Convert to string first to handle edge cases
+    const stringValue = String(value).trim()
+    
+    // Handle empty or invalid strings
+    if (!stringValue || stringValue === 'NaN' || stringValue === 'Infinity' || stringValue === '-Infinity') {
+      return new Decimal(0)
+    }
+    
+    return new Decimal(stringValue)
   } catch (error) {
-    console.error('Invalid money value:', value, error)
+    // Only log if it's an unexpected value to reduce console spam
+    if (value !== 0 && value !== '0' && value !== '') {
+      console.warn('Invalid money value, defaulting to 0:', { value, type: typeof value, error: error.message })
+    }
     return new Decimal(0)
   }
 }

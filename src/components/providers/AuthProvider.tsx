@@ -1,7 +1,8 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState } from 'react'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
+import { createContext, useContext, useEffect, useState } from 'react'
+
 import { createClientSupabaseClient } from '@/lib/supabase/client'
 import type { User, UserRole } from '@/lib/supabase/types'
 
@@ -26,13 +27,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const supabase = createClientSupabaseClient()
 
   useEffect(() => {
-    // Get initial session
+    // Get initial session with faster response
     const getInitialSession = async () => {
       console.log('🔐 AuthProvider: Getting initial session...')
       
       try {
-        // First check for real Supabase session
-        const { data: { session }, error } = await supabase.auth.getSession()
+        // Add timeout to prevent hanging - increased to 4 seconds
+        const sessionPromise = supabase.auth.getSession()
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Session check timeout')), 4000)
+        })
+        
+        const { data: { session }, error } = await Promise.race([
+          sessionPromise,
+          timeoutPromise
+        ]) as any
+        
         console.log('🔐 AuthProvider: Supabase session check', { 
           hasSession: !!session, 
           userId: session?.user?.id,
@@ -42,28 +52,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (session?.user) {
           console.log('🔐 AuthProvider: Found valid Supabase session, setting user')
           setUser(session.user)
-          await fetchUserProfile(session.user.id)
+          
+          // Don't set a default role immediately - wait for database lookup
+          // This prevents wrong redirects
+          console.log('🔐 AuthProvider: Fetching user profile to determine role')
+          
+          try {
+            await fetchUserProfile(session.user.id)
+          } catch (error) {
+            console.error('🔐 AuthProvider: Error fetching profile on initial load:', error)
+            // Only set default if profile fetch fails
+            setRole('player')
+            setUserProfile({
+              id: session.user.id,
+              phone_number: session.user.phone || '',
+              name: null,
+              role: 'player',
+              is_active: true,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+          }
+          
           setLoading(false)
           return
-        }
-        
-        // For development mode, check if we have a mock user stored (fallback)
-        const isTestMode = process.env.NODE_ENV === 'development'
-        if (isTestMode) {
-          const mockUserData = localStorage.getItem('mock-user')
-          if (mockUserData) {
-            try {
-              const mockUser = JSON.parse(mockUserData)
-              console.log('🧪 Development mode: Restoring mock user from localStorage', mockUser)
-              setUser(mockUser)
-              await fetchUserProfile(mockUser.id)
-              setLoading(false)
-              return
-            } catch (error) {
-              console.error('Error parsing mock user data:', error)
-              localStorage.removeItem('mock-user')
-            }
-          }
         }
         
         console.log('🔐 AuthProvider: No session found, user not authenticated')
@@ -75,6 +87,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     getInitialSession()
+    
+    // Failsafe: Force loading to false after 8 seconds - even more time for slow connections
+    const failsafe = setTimeout(() => {
+      console.warn('🔐 AuthProvider: Loading timeout, forcing completion')
+      setLoading(false)
+    }, 8000)
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -92,7 +110,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(null)
           setUserProfile(null)
           setRole(null)
-          localStorage.removeItem('mock-user')
           setLoading(false)
           return
         }
@@ -100,164 +117,287 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (session?.user) {
           console.log('🔐 User session found, setting user state')
           setUser(session.user)
-          await fetchUserProfile(session.user.id)
+          
+          // Don't set a default role immediately - wait for database lookup
+          
+          // Only fetch profile if we don't already have one to prevent loops
+          if (!userProfile || userProfile.id !== session.user.id) {
+            try {
+              await fetchUserProfile(session.user.id)
+            } catch (error) {
+              console.error('🔐 Auth state change: fetchUserProfile failed:', {
+                error,
+                message: error instanceof Error ? error.message : 'Unknown error',
+                stack: error instanceof Error ? error.stack : undefined
+              })
+              // Only set default if profile fetch fails
+              setRole('player')
+              setUserProfile({
+                id: session.user.id,
+                phone_number: session.user.phone || '',
+                name: null,
+                role: 'player',
+                is_active: true,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              })
+            }
+          }
+          setLoading(false)
         } else {
           console.log('🔐 No session found, clearing user state')
           setUser(null)
           setUserProfile(null)
           setRole(null)
-          localStorage.removeItem('mock-user')
+          setLoading(false)
         }
-        setLoading(false)
       }
     )
 
-    return () => subscription.unsubscribe()
+    return () => {
+      subscription.unsubscribe()
+      clearTimeout(failsafe)
+    }
   }, [])
 
   const fetchUserProfile = async (userId: string) => {
+    console.log('👤 Fetching user profile for:', userId)
+    
     try {
-      // For Phase 1, we'll mock the user profile since the database tables don't exist yet
-      // In Phase 2, we'll implement the actual database queries
-      console.log('👤 Fetching user profile for:', userId)
+      // Query real user profile from database
+      const { data: userProfile, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single()
       
-      // Mock profile for development - in Phase 2 this will be real database query
-      const mockProfile = {
+      console.log('👤 Database query result:', { userProfile, error, userId })
+      
+      if (userProfile) {
+        console.log('👤 Found existing user profile:', userProfile)
+        console.log('👤 Setting role to:', userProfile.role)
+        setUserProfile(userProfile)
+        setRole(userProfile.role)
+        return
+      }
+      
+      // No profile found, create one
+      if (error?.code === 'PGRST116') {
+        console.log('👤 No profile found (PGRST116), creating new user profile')
+        await createUserProfile(userId)
+        return
+      }
+      
+      // Other database errors
+      console.error('👤 Database error fetching user profile:', {
+        code: error?.code,
+        message: error?.message,
+        details: error?.details,
+        hint: error?.hint
+      })
+      
+      // For other errors, try to create profile anyway
+      console.log('👤 Attempting to create user profile due to error')
+      await createUserProfile(userId)
+      return
+      
+    } catch (error) {
+      console.error('❌ Error in fetchUserProfile:', {
+        error,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        code: error && typeof error === 'object' ? (error as any).code : undefined,
+        details: error && typeof error === 'object' ? (error as any).details : undefined,
+        userId
+      })
+      
+      // Always provide a fallback profile
+      const fallbackProfile = {
         id: userId,
         phone_number: user?.phone || '',
         name: null,
-        role: 'organizer' as const, // Default to organizer for testing
+        role: 'player' as const,
         is_active: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }
+      setUserProfile(fallbackProfile)
+      setRole('player')
+      console.log('👤 Using fallback profile due to error')
+    }
+  }
+
+  const createUserProfile = async (userId: string) => {
+    try {
+      const { data: session } = await supabase.auth.getSession()
+      const userPhone = session.session?.user?.phone || ''
       
-      console.log('👤 Using mock profile:', mockProfile)
-      setUserProfile(mockProfile)
-      setRole(mockProfile.role)
+      // Default all new users to 'player' role
+      // Only manually change to 'organizer' in database when needed
+      const userRole = 'player'
+      
+      console.log('👤 Creating user profile with default player role:', { userPhone, userRole })
+      
+      const newUserProfile = {
+        id: userId,
+        phone_number: userPhone,
+        name: null,
+        role: userRole as const,
+        is_active: true,
+      }
+      
+      console.log('👤 Creating new user profile:', newUserProfile)
+      
+      const { data, error } = await supabase
+        .from('users')
+        .insert([newUserProfile])
+        .select()
+        .single()
+      
+      if (error) {
+        console.error('❌ Error creating user profile:', {
+          error,
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
+        })
+        throw error
+      }
+      
+      console.log('✅ User profile created successfully:', data)
+      setUserProfile(data)
+      setRole(data.role)
     } catch (error) {
-      console.error('Error fetching user profile:', error)
-      // Don't throw error, just set defaults
-      setUserProfile(null)
-      setRole('organizer') // Default role for Phase 1
+      console.error('❌ Error creating user profile:', {
+        error,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        code: error && typeof error === 'object' ? (error as any).code : undefined,
+        details: error && typeof error === 'object' ? (error as any).details : undefined,
+        userId
+      })
+      
+      // Fallback: create a client-side profile for this session
+      const fallbackProfile = {
+        id: userId,
+        phone_number: user?.phone || '',
+        name: null,
+        role: 'player' as const,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }
+      setUserProfile(fallbackProfile)
+      setRole('player')
+      console.log('👤 Using fallback profile after creation failed')
+      // Don't throw error here - let the app continue with fallback profile
     }
   }
 
   const signInWithPhone = async (phone: string) => {
-    // For development testing, simulate successful OTP REQUEST (not sign-in)
-    const isTestMode = process.env.NODE_ENV === 'development'
-    const testNumbers = ['+6581234567', '+6591234567', '+6598765432']
+    console.log('📱 Requesting OTP for phone:', phone)
     
-    if (isTestMode && testNumbers.includes(phone)) {
-      // Just simulate that OTP was sent, don't actually sign in yet
-      console.log('🧪 Development mode: Simulating OTP request for', phone)
-      return { data: null, error: null }
+    try {
+      const { data, error } = await supabase.auth.signInWithOtp({
+        phone,
+        options: {
+          channel: 'sms',
+          shouldCreateUser: true,
+        },
+      })
+      
+      if (error) {
+        console.error('❌ Error requesting OTP:', error)
+        return { error }
+      }
+      
+      console.log('✅ OTP request successful')
+      return { data, error: null }
+    } catch (error) {
+      console.error('❌ Exception requesting OTP:', error)
+      return { error }
     }
-    
-    return await supabase.auth.signInWithOtp({
-      phone,
-      options: {
-        channel: 'sms',
-        shouldCreateUser: true,
-      },
-    })
   }
 
   const verifyOtp = async (phone: string, token: string) => {
-    // For development testing with test numbers
-    const isTestMode = process.env.NODE_ENV === 'development'
-    const testNumbers = ['+6581234567', '+6591234567', '+6598765432']
+    console.log('🔐 Verifying OTP for phone:', phone)
     
-    if (isTestMode && testNumbers.includes(phone)) {
-      // Accept any 6-digit code for test numbers
-      if (token.length === 6 && /^\d{6}$/.test(token)) {
-        console.log('🧪 Development mode: Accepting test OTP', token)
-        
-        // Create a mock user and session for development
-        const mockUser = {
-          id: 'test-user-' + phone.replace(/\D/g, ''),
-          phone: phone,
-          email: null,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }
-        
-        const mockSession = {
-          access_token: 'mock-token',
-          refresh_token: 'mock-refresh',
-          expires_in: 3600,
-          user: mockUser,
-        }
-        
-        // Store mock user in localStorage for persistence
-        localStorage.setItem('mock-user', JSON.stringify(mockUser))
-        
-        // Manually trigger auth state change
-        setUser(mockUser as any)
-        await fetchUserProfile(mockUser.id)
-        
-        return { data: { user: mockUser, session: mockSession }, error: null }
-      } else {
-        return { data: null, error: { message: 'Invalid OTP format' } }
+    try {
+      const { data, error } = await supabase.auth.verifyOtp({
+        phone,
+        token,
+        type: 'sms',
+      })
+      
+      if (error) {
+        console.error('❌ Error verifying OTP:', error)
+        return { data: null, error }
       }
+      
+      if (data.user) {
+        console.log('✅ OTP verification successful, user logged in:', data.user.id)
+        // The onAuthStateChange will handle updating the user state
+      }
+      
+      return { data, error: null }
+    } catch (error) {
+      console.error('❌ Exception verifying OTP:', error)
+      return { data: null, error }
     }
-    
-    return await supabase.auth.verifyOtp({
-      phone,
-      token,
-      type: 'sms',
-    })
   }
 
   const signOut = async () => {
     try {
       console.log('🔓 Signing out user', { userId: user?.id, phone: user?.phone })
       
-      // Check if this is a mock user BEFORE clearing state
-      const isTestMode = process.env.NODE_ENV === 'development'
-      const isMockUser = user?.id?.startsWith('test-user-')
-      
-      if (isTestMode && isMockUser) {
-        console.log('🧪 Development mode: Clearing mock user session')
-        localStorage.removeItem('mock-user')
-      } else {
-        console.log('🔓 Real Supabase user: calling supabase.auth.signOut()')
-        
-        // For real Supabase users, force sign out with scope 'global' to clear all sessions
-        const { error } = await supabase.auth.signOut({ scope: 'global' })
-        if (error) {
-          console.error('🔓 Supabase signOut error:', error)
-        } else {
-          console.log('🔓 Supabase sign out completed successfully')
-        }
-        
-        // Verify the session is actually cleared
-        const { data: { session } } = await supabase.auth.getSession()
-        console.log('🔓 Session check after signOut:', { hasSession: !!session })
-        
-        if (session) {
-          console.warn('🔓 Warning: Session still exists after signOut, forcing clear')
-          // Force clear browser storage
-          localStorage.clear()
-          sessionStorage.clear()
-        }
-      }
-      
-      // Clear local state
+      // Clear local state first
       setUser(null)
       setUserProfile(null)
       setRole(null)
-      localStorage.removeItem('mock-user')
       
-      console.log('🔓 Local state cleared')
+      // Sign out from Supabase with global scope to clear all sessions
+      const { error } = await supabase.auth.signOut({ scope: 'global' })
+      if (error) {
+        console.error('🔓 Supabase signOut error:', error)
+      } else {
+        console.log('🔓 Supabase sign out completed successfully')
+      }
+      
+      // Force clear all browser storage related to authentication
+      try {
+        if (typeof window !== 'undefined') {
+          // Clear localStorage items that might contain session data
+          const keysToRemove = []
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i)
+            if (key && (key.startsWith('supabase.auth.token') || key.startsWith('sb-'))) {
+              keysToRemove.push(key)
+            }
+          }
+          keysToRemove.forEach(key => localStorage.removeItem(key))
+          
+          // Clear sessionStorage as well
+          const sessionKeysToRemove = []
+          for (let i = 0; i < sessionStorage.length; i++) {
+            const key = sessionStorage.key(i)
+            if (key && (key.startsWith('supabase.auth.token') || key.startsWith('sb-'))) {
+              sessionKeysToRemove.push(key)
+            }
+          }
+          sessionKeysToRemove.forEach(key => sessionStorage.removeItem(key))
+          
+          console.log('🔓 Browser storage cleared')
+        }
+      } catch (storageError) {
+        console.error('🔓 Error clearing browser storage:', storageError)
+      }
+      
+      console.log('🔓 Complete sign out process finished')
     } catch (error) {
       console.error('Sign out error:', error)
       // Force clear everything on error
       setUser(null)
       setUserProfile(null)
       setRole(null)
-      localStorage.clear()
-      sessionStorage.clear()
     }
   }
 

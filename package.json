@@ -5,8 +5,10 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:strict": "next build",
     "start": "next start",
     "lint": "next lint",
+    "lint:production": "next lint --config .eslintrc.production.js",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"
@@ -19,6 +21,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "decimal.js": "^10.6.0",
+    "dotenv": "^17.2.0",
     "lucide-react": "^0.525.0",
     "next": "15.3.5",
     "react": "^19.0.0",

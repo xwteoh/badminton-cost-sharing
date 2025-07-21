@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Access DB to Migration JSON</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1 { color: #1f2937; margin-bottom: 8px; }
+        h2 { color: #374151; margin-top: 32px; margin-bottom: 16px; }
+        .subtitle { color: #6b7280; margin-bottom: 24px; }
+        textarea {
+            width: 100%;
+            height: 200px;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+            resize: vertical;
+            margin-bottom: 12px;
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            margin: 8px 8px 8px 0;
+        }
+        button:hover { background: #2563eb; }
+        button.secondary {
+            background: #6b7280;
+        }
+        button.secondary:hover { background: #4b5563; }
+        .result {
+            background: #f0fdf4;
+            border: 2px solid #bbf7d0;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 16px;
+        }
+        .error {
+            background: #fef2f2;
+            border: 2px solid #fecaca;
+            color: #dc2626;
+        }
+        .instructions {
+            background: #eff6ff;
+            border: 2px solid #bfdbfe;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 24px;
+        }
+        .instructions h3 {
+            margin-top: 0;
+            color: #1e40af;
+        }
+        .instructions ol {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .instructions li {
+            margin-bottom: 8px;
+        }
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #e5e7eb;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .tab {
+            padding: 12px 20px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            font-weight: 500;
+            min-width: 120px;
+            text-align: center;
+        }
+        .tab.active {
+            border-bottom-color: #3b82f6;
+            color: #3b82f6;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .example {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 12px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 11px;
+            overflow-x: auto;
+            margin: 12px 0;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .progress {
+            background: #e5e7eb;
+            border-radius: 8px;
+            height: 8px;
+            margin: 16px 0;
+        }
+        .progress-bar {
+            background: #3b82f6;
+            height: 100%;
+            border-radius: 8px;
+            transition: width 0.3s ease;
+        }
+        .step {
+            background: #f3f4f6;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+        .step.completed {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+        }
+        .step h4 {
+            margin: 0 0 8px 0;
+            color: #374151;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏸 Your Access Database Migration Tool</h1>
+        <p class="subtitle">Convert your specific Access database to badminton app migration format</p>
+        
+        <div class="instructions">
+            <h3>📋 Export Instructions for YOUR Database:</h3>
+            <ol>
+                <li><strong>Players Table:</strong> Export as CSV with columns: Player Name, Active</li>
+                <li><strong>Game Table:</strong> Export as CSV with columns: ID, Game Date, Start Time, End Time, Location, Court Price, Per Shuttle, Shuttle Used, Total Shuttle Price</li>
+                <li><strong>Attendance Table:</strong> Export as CSV with columns: ID, Game ID, Player</li>
+                <li><strong>Payment Table:</strong> Export as CSV with columns: Payment Date, Player Name, Payment Amount</li>
+                <li><strong>Location Table:</strong> Export as CSV with columns: Location</li>
+            </ol>
+            <div style="background: #fef3cd; border: 1px solid #f6cc4c; border-radius: 6px; padding: 12px; margin-top: 12px;">
+                <strong>📝 Note:</strong> Phone numbers will be set to a single space (for database compatibility). For the migration system:
+                <ul style="margin: 8px 0 0 20px;">
+                    <li><strong>Regular players:</strong> Must have phone numbers (required for login)</li>
+                    <li><strong>Drop-in/guest players:</strong> Can have placeholder phone numbers (set is_temporary: true)</li>
+                    <li><strong>Your Access data:</strong> Will be imported as temporary players, add real phone numbers later to convert to regular players</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="progress">
+            <div class="progress-bar" id="progress-bar" style="width: 0%"></div>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" onclick="showTab('players')">👥 Players</div>
+            <div class="tab" onclick="showTab('games')">🏸 Games</div>
+            <div class="tab" onclick="showTab('attendance')">📋 Attendance</div>
+            <div class="tab" onclick="showTab('payments')">💰 Payments</div>
+            <div class="tab" onclick="showTab('result')">🎯 Final JSON</div>
+        </div>
+
+        <!-- Players Tab -->
+        <div id="players-tab" class="tab-content active">
+            <div class="step" id="step-players">
+                <h4>Step 1: Import Players</h4>
+                <p><strong>Expected format:</strong> Player Name, Active</p>
+                <div class="example">Player Name,Active
+Abel,No
+Aileen,Yes
+Andy,Yes
+Arie,Yes</div>
+                
+                <textarea id="players-csv" placeholder="Paste your Players table CSV here..."></textarea>
+                <button onclick="processPlayers()">✅ Process Players</button>
+                <button class="secondary" onclick="clearData('players')">🗑️ Clear</button>
+                
+                <div id="players-result"></div>
+            </div>
+        </div>
+
+        <!-- Games Tab -->
+        <div id="games-tab" class="tab-content">
+            <div class="step" id="step-games">
+                <h4>Step 2: Import Games</h4>
+                <p><strong>Expected format:</strong> ID, Game Date, Start Time, End Time, Location, Court Price, Per Shuttle, Shuttle Used, Total Shuttle Price</p>
+                <div class="example">ID,Game Date,Start Time,End Time,Location,Court Price,Per Shuttle,Shuttle Used,Total Shuttle Price
+86,16/11/2019,7:00:00,9:00:00,Clementi Sports Hall,$14.80,$3.00,2,$6.00
+87,23/11/2019,7:00:00,9:00:00,Clementi Sports Hall,$14.80,$3.00,2,$6.00</div>
+                
+                <textarea id="games-csv" placeholder="Paste your Game table CSV here..."></textarea>
+                <button onclick="processGames()">✅ Process Games</button>
+                <button class="secondary" onclick="clearData('games')">🗑️ Clear</button>
+                <button onclick="loadSampleGames()">📝 Load Sample Data</button>
+                <button onclick="debugGames()">🔍 Debug Data</button>
+                
+                <div id="games-result"></div>
+            </div>
+        </div>
+
+        <!-- Attendance Tab -->
+        <div id="attendance-tab" class="tab-content">
+            <div class="step" id="step-attendance">
+                <h4>Step 3: Import Attendance</h4>
+                <p><strong>Expected format:</strong> ID, Game ID, Player</p>
+                <div class="example">ID,Game ID,Player
+42,1,Xin Wei
+43,1,Budi
+44,1,Aidan</div>
+                
+                <textarea id="attendance-csv" placeholder="Paste your Attendance table CSV here..."></textarea>
+                <button onclick="processAttendance()">✅ Process Attendance</button>
+                <button class="secondary" onclick="clearData('attendance')">🗑️ Clear</button>
+                
+                <div id="attendance-result"></div>
+            </div>
+        </div>
+
+        <!-- Payments Tab -->
+        <div id="payments-tab" class="tab-content">
+            <div class="step" id="step-payments">
+                <h4>Step 4: Import Payments (Optional)</h4>
+                <p><strong>Expected format:</strong> Payment Date, Player Name, Payment Amount</p>
+                <div class="example">Payment Date,Player Name,Payment Amount
+7/8/2016,Budi,$1.00
+7/8/2016,Aidan,$20.00</div>
+                
+                <textarea id="payments-csv" placeholder="Paste your Payment table CSV here..."></textarea>
+                <button onclick="processPayments()">✅ Process Payments</button>
+                <button class="secondary" onclick="clearData('payments')">🗑️ Clear</button>
+                
+                <div id="payments-result"></div>
+            </div>
+        </div>
+
+        <!-- Result Tab -->
+        <div id="result-tab" class="tab-content">
+            <div class="step completed" id="step-result">
+                <h4>Step 5: Final Migration JSON</h4>
+                <p>Copy this JSON and paste it into your Data Migration Tool:</p>
+                
+                <textarea id="final-json" readonly placeholder="Your final migration JSON will appear here..."></textarea>
+                <button onclick="copyToClipboard()">📋 Copy to Clipboard</button>
+                <button onclick="downloadJson()">💾 Download JSON File</button>
+                <button onclick="validateJson()">🔍 Validate JSON</button>
+                
+                <div id="validation-result"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let playersData = [];
+        let gamesData = [];
+        let attendanceData = [];
+        let paymentsData = [];
+        
+        function showTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabName + '-tab').classList.add('active');
+            document.querySelector(`[onclick="showTab('${tabName}')"]`).classList.add('active');
+        }
+
+        function csvToArray(csv) {
+            // Clean up the CSV data
+            const cleanCsv = csv.trim().replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+            const lines = cleanCsv.split('\n').filter(line => line.trim() !== '');
+            
+            if (lines.length === 0) {
+                throw new Error('No data found in CSV');
+            }
+            
+            console.log('CSV lines found:', lines.length);
+            console.log('First line (headers):', lines[0]);
+            
+            // Parse headers - handle quoted headers
+            const headerLine = lines[0];
+            const headers = [];
+            let current = '';
+            let inQuotes = false;
+            
+            for (let j = 0; j < headerLine.length; j++) {
+                const char = headerLine[j];
+                if (char === '"') {
+                    inQuotes = !inQuotes;
+                } else if (char === ',' && !inQuotes) {
+                    headers.push(current.trim().replace(/^"|"$/g, ''));
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            headers.push(current.trim().replace(/^"|"$/g, ''));
+            
+            console.log('Parsed headers:', headers);
+            
+            const rows = [];
+            
+            for (let i = 1; i < lines.length; i++) {
+                if (!lines[i].trim()) continue; // Skip empty lines
+                
+                const values = [];
+                let current = '';
+                let inQuotes = false;
+                
+                for (let j = 0; j < lines[i].length; j++) {
+                    const char = lines[i][j];
+                    if (char === '"') {
+                        inQuotes = !inQuotes;
+                    } else if (char === ',' && !inQuotes) {
+                        values.push(current.trim().replace(/^"|"$/g, ''));
+                        current = '';
+                    } else {
+                        current += char;
+                    }
+                }
+                values.push(current.trim().replace(/^"|"$/g, ''));
+                
+                console.log(`Row ${i} values:`, values);
+                
+                // Create row object even if column count doesn't match exactly
+                const row = {};
+                headers.forEach((header, index) => {
+                    row[header] = values[index] || '';
+                });
+                
+                // Only add row if it has at least some data
+                const hasData = Object.values(row).some(value => value.trim() !== '');
+                if (hasData) {
+                    rows.push(row);
+                }
+            }
+            
+            console.log('Total rows parsed:', rows.length);
+            return rows;
+        }
+
+        function processPlayers() {
+            const csv = document.getElementById('players-csv').value;
+            if (!csv.trim()) {
+                showError('players-result', 'Please enter CSV data');
+                return;
+            }
+
+            try {
+                const rows = csvToArray(csv);
+                playersData = rows.map(row => {
+                    const playerName = row['Player Name'] || row['Player'] || row['Name'] || '';
+                    const isActive = (row['Active'] || '').toLowerCase();
+                    
+                    const hasPhone = false; // Since we're leaving phone numbers blank
+                    
+                    return {
+                        name: playerName,
+                        phone_number: ' ', // Single space to satisfy NOT NULL constraint
+                        is_active: isActive === 'yes' || isActive === 'true' || isActive === '1',
+                        is_temporary: !hasPhone, // Set as temporary if no phone number
+                        notes: hasPhone ? 
+                            `Migrated from Access DB` : 
+                            `Migrated from Access DB as temporary player - add phone number to make regular player`
+                    };
+                }).filter(player => player.name.trim() !== '');
+
+                showSuccess('players-result', `✅ Processed ${playersData.length} players successfully!`);
+                document.getElementById('step-players').classList.add('completed');
+                updateProgress();
+                updateFinalJson();
+            } catch (error) {
+                showError('players-result', 'Error parsing CSV: ' + error.message);
+            }
+        }
+
+        function processGames() {
+            const csv = document.getElementById('games-csv').value;
+            if (!csv.trim()) {
+                showError('games-result', 'Please enter CSV data');
+                return;
+            }
+
+            try {
+                const rows = csvToArray(csv);
+                console.log('Parsed CSV rows:', rows);
+                
+                if (rows.length === 0) {
+                    showError('games-result', 'No data found in CSV. Check your CSV format.');
+                    return;
+                }
+                
+                // Debug: Show available columns
+                const firstRow = rows[0];
+                console.log('Available columns:', Object.keys(firstRow));
+                
+                gamesData = rows.map((row, index) => {
+                    // More flexible column matching
+                    const getColumnValue = (possibleNames) => {
+                        for (let name of possibleNames) {
+                            if (row[name] !== undefined) return row[name];
+                        }
+                        return '';
+                    };
+                    
+                    const id = getColumnValue(['ID', 'Id', 'id']);
+                    const gameDate = getColumnValue(['Game Date', 'GameDate', 'Date', 'Session Date']);
+                    const startTime = getColumnValue(['Start Time', 'StartTime', 'Start', 'Time Start']);
+                    const endTime = getColumnValue(['End Time', 'EndTime', 'End', 'Time End']);
+                    const location = getColumnValue(['Location', 'Venue', 'Hall']);
+                    const courtPrice = getColumnValue(['Court Price', 'Court Pric', 'CourtPrice', 'Court Rate']);
+                    const shuttlePrice = getColumnValue(['Per Shuttle', 'PerShuttle', 'Shuttle Rate', 'Shuttle Price']);
+                    const shuttleUsed = getColumnValue(['Shuttle Used', 'ShuttleUsed', 'Shuttles Used', 'Total Shuttles']);
+                    const totalShuttlePrice = getColumnValue(['Total Shuttle Price', 'Total Shuttle Pric', 'TotalShuttlePrice']);
+                    
+                    console.log(`Row ${index + 1}:`, {
+                        id, gameDate, startTime, endTime, location, courtPrice, shuttlePrice, shuttleUsed, totalShuttlePrice
+                    });
+                    
+                    const parsedCourtPrice = parseFloat(String(courtPrice).replace(/[$,]/g, '')) || 0;
+                    const parsedShuttlePrice = parseFloat(String(shuttlePrice).replace(/[$,]/g, '')) || 0;
+                    const parsedShuttleUsed = parseInt(shuttleUsed) || 0;
+                    const parsedTotalShuttlePrice = parseFloat(String(totalShuttlePrice).replace(/[$,]/g, '')) || 0;
+                    
+                    // Calculate hours from start and end time
+                    const calculatedHours = calculateHoursFromTimes(startTime, endTime);
+                    const totalHours = calculatedHours > 0 ? calculatedHours : 2; // Default to 2 hours if calculation fails
+                    
+                    // FIXED: Court price from CSV is TOTAL court cost, not per-hour rate
+                    // Don't multiply by hours - use direct total court cost from CSV
+                    const totalCost = parsedCourtPrice + parsedTotalShuttlePrice;
+                    
+                    console.log(`Cost calculation for game ${id}:`, {
+                        courtPriceFromCSV: parsedCourtPrice,
+                        shuttleCost: parsedTotalShuttlePrice,
+                        totalHours: totalHours,
+                        calculatedTotal: totalCost,
+                        note: 'Court price is TOTAL cost, not per-hour'
+                    });
+                    
+                    return {
+                        id: String(id),
+                        date: formatDate(gameDate),
+                        start_time: startTime,
+                        end_time: endTime,
+                        location: String(location),
+                        court_rate: parsedCourtPrice,
+                        shuttle_rate: parsedShuttlePrice,
+                        total_shuttles: parsedShuttleUsed,
+                        total_shuttle_cost: parsedTotalShuttlePrice,
+                        total_hours: totalHours,
+                        total_cost: totalCost,
+                        player_count: 0, // Will be set from attendance
+                        cost_per_player: 0 // Will be calculated
+                    };
+                });
+
+                console.log('Processed games data:', gamesData);
+                showSuccess('games-result', `✅ Processed ${gamesData.length} games successfully!<br><small>Check browser console (F12) for detailed parsing info.</small>`);
+                document.getElementById('step-games').classList.add('completed');
+                updateProgress();
+                updateFinalJson();
+            } catch (error) {
+                console.error('Error processing games:', error);
+                showError('games-result', 'Error parsing CSV: ' + error.message + '<br><small>Check browser console (F12) for details.</small>');
+            }
+        }
+
+        function processAttendance() {
+            const csv = document.getElementById('attendance-csv').value;
+            if (!csv.trim()) {
+                showError('attendance-result', 'Please enter CSV data');
+                return;
+            }
+
+            try {
+                const rows = csvToArray(csv);
+                console.log('Raw attendance rows:', rows);
+                
+                attendanceData = rows.map(row => ({
+                    id: row['ID'] || row['Id'] || '',
+                    gameId: row['Game ID'] || row['Game Id'] || row['GameID'] || '',
+                    player: row['Player'] || row['Player Name'] || ''
+                }));
+
+                console.log('Processed attendance data:', attendanceData);
+
+                // Group attendance by game ID (normalize to string for consistent matching)
+                const attendanceByGame = {};
+                attendanceData.forEach(att => {
+                    const gameIdStr = String(att.gameId).trim();
+                    if (gameIdStr && gameIdStr !== '') {
+                        if (!attendanceByGame[gameIdStr]) {
+                            attendanceByGame[gameIdStr] = [];
+                        }
+                        attendanceByGame[gameIdStr].push(att.player);
+                    }
+                });
+
+                console.log('Attendance grouped by game:', attendanceByGame);
+                console.log('Available game IDs:', gamesData.map(g => g.id));
+
+                // Update games with participant counts and costs
+                gamesData.forEach(game => {
+                    const gameIdStr = String(game.id).trim();
+                    const participants = attendanceByGame[gameIdStr] || [];
+                    console.log(`Game ${game.id} (normalized: ${gameIdStr}): Found ${participants.length} participants:`, participants);
+                    
+                    game.player_count = participants.length;
+                    // Round cost per player to 1 decimal place
+                    game.cost_per_player = participants.length > 0 ? 
+                        Math.round((game.total_cost / participants.length) * 10) / 10 : 0;
+                    game.participants = participants.map(playerName => ({
+                        player_name: playerName,
+                        phone_number: getPlayerPhone(playerName),
+                        // Round amount owed to 1 decimal place
+                        amount_owed: Math.round(game.cost_per_player * 10) / 10
+                    }));
+                    
+                    console.log(`Game ${game.id} updated with participants:`, game.participants);
+                });
+
+                console.log('Updated games data with participants:', gamesData);
+
+                showSuccess('attendance-result', `✅ Processed ${attendanceData.length} attendance records successfully!<br><small>Check browser console (F12) for detailed mapping info.</small>`);
+                document.getElementById('step-attendance').classList.add('completed');
+                updateProgress();
+                updateFinalJson();
+            } catch (error) {
+                showError('attendance-result', 'Error parsing CSV: ' + error.message);
+            }
+        }
+
+        function processPayments() {
+            const csv = document.getElementById('payments-csv').value;
+            if (!csv.trim()) {
+                showSuccess('payments-result', '✅ No payments to process (optional)');
+                document.getElementById('step-payments').classList.add('completed');
+                updateProgress();
+                return;
+            }
+
+            try {
+                const rows = csvToArray(csv);
+                paymentsData = rows.map(row => {
+                    const amount = parseFloat((row['Payment Amount'] || row['Payment Ar'] || '0').replace('$', '')) || 0;
+                    const payment_method = amount < 0 ? 'credit_transfer' : 'other';
+                    
+                    // Round payment amount to 1 decimal place
+                    const roundedAmount = Math.round(amount * 10) / 10;
+                    
+                    console.log(`Processing payment: ${row['Player Name'] || ''}, amount: ${roundedAmount}, method: ${payment_method}`);
+                    
+                    return {
+                        payment_date: formatDate(row['Payment Date'] || row['Payment Da'] || ''),
+                        player_name: row['Player Name'] || '',
+                        amount: roundedAmount,
+                        payment_method: payment_method, // Use credit_transfer for negative amounts
+                        notes: amount < 0 ? 
+                            'Migrated from Access DB - Credit/Refund' : 
+                            'Migrated from Access DB'
+                    };
+                });
+
+                // Group payments by date to attach to sessions
+                const paymentsByDate = {};
+                paymentsData.forEach(payment => {
+                    if (!paymentsByDate[payment.payment_date]) {
+                        paymentsByDate[payment.payment_date] = [];
+                    }
+                    paymentsByDate[payment.payment_date].push({
+                        player_name: payment.player_name,
+                        phone_number: getPlayerPhone(payment.player_name),
+                        amount: payment.amount,
+                        payment_date: payment.payment_date,
+                        payment_method: payment.amount < 0 ? 'credit_transfer' : payment.payment_method, // Ensure negative amounts use credit_transfer
+                        notes: payment.notes
+                    });
+                });
+
+                // REMOVED: Don't attach payments to sessions anymore - they're all in top-level array
+                // This prevents duplicate payments (top-level + session-level)
+                // gamesData.forEach(game => {
+                //     if (paymentsByDate[game.date]) {
+                //         game.payments = paymentsByDate[game.date];
+                //     }
+                // });
+                console.log('✅ Payments moved to top-level array only - no session-level duplicates');
+
+                showSuccess('payments-result', `✅ Processed ${paymentsData.length} payments successfully!`);
+                document.getElementById('step-payments').classList.add('completed');
+                updateProgress();
+                updateFinalJson();
+            } catch (error) {
+                showError('payments-result', 'Error parsing CSV: ' + error.message);
+            }
+        }
+
+        function getPlayerPhone(playerName) {
+            const player = playersData.find(p => p.name === playerName);
+            return player ? player.phone_number : ' '; // Single space to satisfy NOT NULL constraint
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '';
+            
+            // Handle D/M/YYYY format (your Access format)
+            const parts = dateStr.split('/');
+            if (parts.length === 3) {
+                const day = parts[0].padStart(2, '0');
+                const month = parts[1].padStart(2, '0');
+                const year = parts[2];
+                return `${year}-${month}-${day}`;
+            }
+            
+            // Try to parse as date
+            const date = new Date(dateStr);
+            if (!isNaN(date.getTime())) {
+                return date.toISOString().split('T')[0];
+            }
+            
+            return dateStr;
+        }
+
+        function calculateHoursFromTimes(startTime, endTime) {
+            if (!startTime || !endTime) return 0;
+            
+            try {
+                // Parse time strings (e.g., "7:00:00" or "19:00:00")
+                const parseTime = (timeStr) => {
+                    const parts = timeStr.split(':');
+                    const hours = parseInt(parts[0]) || 0;
+                    const minutes = parseInt(parts[1]) || 0;
+                    const seconds = parseInt(parts[2]) || 0;
+                    return hours + (minutes / 60) + (seconds / 3600);
+                };
+                
+                const startHours = parseTime(startTime);
+                const endHours = parseTime(endTime);
+                
+                // Handle case where end time is next day (crosses midnight)
+                let duration = endHours - startHours;
+                if (duration < 0) {
+                    duration += 24; // Add 24 hours for next day
+                }
+                
+                console.log(`Time calculation: ${startTime} to ${endTime} = ${duration} hours`);
+                return Math.round(duration * 2) / 2; // Round to nearest 0.5 hour
+            } catch (error) {
+                console.warn('Error calculating hours from times:', error);
+                return 0;
+            }
+        }
+
+        function updateFinalJson() {
+            const migrationData = {};
+            
+            if (playersData.length > 0) {
+                migrationData.players = playersData;
+            }
+            
+            // CRITICAL FIX: Add ALL payments to top-level payments array
+            if (paymentsData.length > 0) {
+                console.log('=== ADDING ALL PAYMENTS TO TOP-LEVEL ARRAY ===');
+                console.log(`Adding ${paymentsData.length} payments to top-level payments array`);
+                
+                migrationData.payments = paymentsData.map(payment => ({
+                    player_name: payment.player_name,
+                    phone_number: getPlayerPhone(payment.player_name),
+                    // Ensure payment amount is rounded to 1 decimal place
+                    amount: Math.round(payment.amount * 10) / 10,
+                    payment_date: payment.payment_date,
+                    payment_method: payment.payment_method,
+                    notes: payment.notes
+                }));
+                
+                console.log('Top-level payments array created:', migrationData.payments.length, 'payments');
+            }
+            
+            if (gamesData.length > 0) {
+                console.log('=== UPDATE FINAL JSON ===');
+                console.log('Converting games to sessions:', gamesData);
+                
+                const sessions = gamesData.map(game => {
+                    console.log(`Processing game ${game.id} with ${game.participants ? game.participants.length : 0} participants:`, game.participants);
+                    
+                    const session = {
+                        date: game.date,
+                        location_name: game.location,
+                        court_rate: game.court_rate,
+                        shuttle_rate: game.shuttle_rate,
+                        total_hours: game.total_hours,
+                        total_shuttles: game.total_shuttles,
+                        total_cost: game.total_cost,
+                        player_count: game.player_count,
+                        cost_per_player: game.cost_per_player,
+                        session_name: `Session at ${game.location} - ${game.date}`,
+                        participants: game.participants || []
+                        // REMOVED: payments - all payments are now in top-level array only
+                    };
+
+                    // Add start_time and end_time if available
+                    if (game.start_time) {
+                        session.start_time = game.start_time;
+                    }
+                    if (game.end_time) {
+                        session.end_time = game.end_time;
+                    }
+                    
+                    // REMOVED: No more session-level payment processing
+                    // All payments are handled in top-level array with proper payment_method fixing
+                    
+                    console.log(`Created session with ${session.participants.length} participants:`, session);
+                    return session;
+                });
+                
+                // Don't filter out sessions without participants yet - 
+                // participants will be added when processing attendance
+                migrationData.sessions = sessions;
+                console.log('Final sessions array with participants:', sessions.map(s => ({
+                    date: s.date,
+                    participants_count: s.participants.length,
+                    participants: s.participants
+                })));
+            }
+            
+            const jsonResult = JSON.stringify(migrationData, null, 2);
+            console.log('Final JSON length:', jsonResult.length);
+            document.getElementById('final-json').value = jsonResult;
+        }
+
+        function updateProgress() {
+            const steps = ['players', 'games', 'attendance', 'payments'];
+            const completed = steps.filter(step => 
+                document.getElementById(`step-${step}`).classList.contains('completed')
+            ).length;
+            const progress = (completed / steps.length) * 100;
+            document.getElementById('progress-bar').style.width = progress + '%';
+        }
+
+        function showSuccess(elementId, message) {
+            document.getElementById(elementId).innerHTML = `<div class="result">${message}</div>`;
+        }
+
+        function showError(elementId, message) {
+            document.getElementById(elementId).innerHTML = `<div class="result error">${message}</div>`;
+        }
+
+        function clearData(type) {
+            document.getElementById(`${type}-csv`).value = '';
+            document.getElementById(`${type}-result`).innerHTML = '';
+            document.getElementById(`step-${type}`).classList.remove('completed');
+            
+            if (type === 'players') playersData = [];
+            if (type === 'games') gamesData = [];
+            if (type === 'attendance') attendanceData = [];
+            if (type === 'payments') paymentsData = [];
+            
+            updateProgress();
+            updateFinalJson();
+        }
+
+        function loadSampleGames() {
+            const sampleData = `ID,Game Date,Start Time,End Time,Location,Court Price,Per Shuttle,Shuttle Used,Total Shuttle Price
+86,16/11/2019,7:00:00,9:00:00,Clementi Sports Hall,$14.80,$3.00,2,$6.00
+87,23/11/2019,7:00:00,9:00:00,Clementi Sports Hall,$14.80,$3.00,2,$6.00
+88,30/11/2019,7:00:00,9:00:00,Clementi Sports Hall,$14.80,$3.00,3,$9.00`;
+            
+            document.getElementById('games-csv').value = sampleData;
+        }
+
+        function debugGames() {
+            console.log('=== DEBUG GAMES DATA ===');
+            console.log('Raw gamesData:', gamesData);
+            console.log('gamesData length:', gamesData.length);
+            console.log('playersData:', playersData);
+            console.log('attendanceData:', attendanceData);
+            console.log('paymentsData:', paymentsData);
+            
+            if (gamesData.length > 0) {
+                console.log('First game object:', gamesData[0]);
+                console.log('All game properties:', Object.keys(gamesData[0]));
+            }
+            
+            // Force update JSON
+            updateFinalJson();
+            
+            alert('Debug info logged to console. Press F12 to view. Also triggered JSON update.');
+        }
+
+        function copyToClipboard() {
+            const jsonText = document.getElementById('final-json').value;
+            if (!jsonText) {
+                alert('No JSON data to copy. Please process your CSV data first.');
+                return;
+            }
+            
+            navigator.clipboard.writeText(jsonText).then(() => {
+                alert('✅ JSON copied to clipboard! You can now paste it into the migration tool.');
+            }).catch(() => {
+                alert('Failed to copy. Please select all text manually and copy.');
+            });
+        }
+
+        function downloadJson() {
+            const jsonText = document.getElementById('final-json').value;
+            if (!jsonText) {
+                alert('No JSON data to download. Please process your CSV data first.');
+                return;
+            }
+            
+            const blob = new Blob([jsonText], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'badminton-migration-data.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function validateJson() {
+            const jsonText = document.getElementById('final-json').value;
+            if (!jsonText) {
+                showError('validation-result', 'No JSON data to validate');
+                return;
+            }
+            
+            try {
+                const data = JSON.parse(jsonText);
+                let validationMessages = [];
+                
+                if (data.players) {
+                    validationMessages.push(`✅ ${data.players.length} players ready for migration`);
+                    
+                    const regularPlayers = data.players.filter(p => !p.is_temporary).length;
+                    const temporaryPlayers = data.players.filter(p => p.is_temporary).length;
+                    
+                    if (regularPlayers > 0) {
+                        validationMessages.push(`👤 ${regularPlayers} regular players`);
+                    }
+                    if (temporaryPlayers > 0) {
+                        validationMessages.push(`🚻 ${temporaryPlayers} temporary/drop-in players`);
+                    }
+                    
+                    const regularPlayersWithoutPhone = data.players.filter(p => !p.is_temporary && (!p.phone_number || p.phone_number.trim() === '' || p.phone_number.trim() === ' ')).length;
+                    if (regularPlayersWithoutPhone > 0) {
+                        validationMessages.push(`⚠️ ${regularPlayersWithoutPhone} regular players missing phone numbers - these are required`);
+                    }
+                }
+                
+                if (data.payments) {
+                    validationMessages.push(`💰 ${data.payments.length} payments in top-level array (ALL payments)`);
+                    
+                    const negativePayments = data.payments.filter(p => p.amount < 0).length;
+                    const positivePayments = data.payments.filter(p => p.amount > 0).length;
+                    const zeroPayments = data.payments.filter(p => p.amount === 0).length;
+                    
+                    if (positivePayments > 0) validationMessages.push(`💵 ${positivePayments} positive payments`);
+                    if (negativePayments > 0) validationMessages.push(`💸 ${negativePayments} negative payments (credits/refunds)`);
+                    if (zeroPayments > 0) validationMessages.push(`⚠️ ${zeroPayments} zero-amount payments`);
+                }
+                
+                if (data.sessions) {
+                    validationMessages.push(`✅ ${data.sessions.length} sessions ready for migration`);
+                    const totalParticipants = data.sessions.reduce((sum, session) => sum + session.participants.length, 0);
+                    validationMessages.push(`✅ ${totalParticipants} total participant records`);
+                    
+                    // No more session-level payments - all payments are in top-level array
+                    validationMessages.push(`📅 Sessions contain NO payments (all payments moved to top-level array)`);
+                    validationMessages.push(`✅ This prevents duplicate payments during migration`);
+                    
+                    // Check for session timing data
+                    const sessionsWithTimes = data.sessions.filter(s => s.start_time && s.end_time).length;
+                    if (sessionsWithTimes > 0) {
+                        validationMessages.push(`⏰ ${sessionsWithTimes} sessions include start/end times`);
+                    }
+                    
+                    // Check for participants without phone numbers
+                    const participantsWithoutPhone = data.sessions.reduce((count, session) => {
+                        return count + session.participants.filter(p => !p.phone_number || p.phone_number.trim() === '').length;
+                    }, 0);
+                    if (participantsWithoutPhone > 0) {
+                        validationMessages.push(`⚠️ ${participantsWithoutPhone} participants missing phone numbers - add these before migration`);
+                    }
+                }
+                
+                showSuccess('validation-result', validationMessages.join('<br>'));
+            } catch (error) {
+                showError('validation-result', 'Invalid JSON: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>

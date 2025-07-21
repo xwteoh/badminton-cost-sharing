@@ -1,6 +1,7 @@
 'use client'
 
 import { forwardRef, useRef, useEffect, useState } from 'react'
+
 import { cn } from '@/lib/utils/cn'
 
 export interface OTPInputProps {
@@ -132,7 +133,7 @@ const OTPInput = forwardRef<HTMLDivElement, OTPInputProps>(
 
     return (
       <div className={cn('space-y-4', className)} ref={ref}>
-        <div className="flex justify-center gap-3">
+        <div className="flex justify-center gap-2">
           {Array.from({ length }).map((_, index) => (
             <input
               key={index}
@@ -149,9 +150,10 @@ const OTPInput = forwardRef<HTMLDivElement, OTPInputProps>(
               onFocus={() => handleFocus(index)}
               disabled={disabled}
               className={cn(
-                'h-14 w-12 rounded-lg border border-input bg-background text-center text-lg font-mono font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
-                error && 'border-destructive focus-visible:ring-destructive',
-                values[index] && 'border-primary'
+                'h-12 w-10 rounded-lg border-2 border-input bg-gradient-to-br from-background to-background/50 text-center text-lg font-mono font-bold ring-offset-background transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+                'shadow-sm hover:shadow-md focus:shadow-lg focus:shadow-primary/25 hover:border-primary/50 focus:border-primary hover:-translate-y-0.5 focus:-translate-y-0.5',
+                error && 'border-destructive focus-visible:ring-destructive hover:border-destructive/50 focus:border-destructive',
+                values[index] && 'border-primary bg-gradient-to-br from-primary/5 to-primary/10 text-primary scale-105'
               )}
               aria-label={`OTP digit ${index + 1}`}
             />
@@ -159,12 +161,17 @@ const OTPInput = forwardRef<HTMLDivElement, OTPInputProps>(
         </div>
         
         {error && (
-          <p className="text-sm text-destructive text-center" role="alert">
-            {error}
-          </p>
+          <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-4 animate-fadeIn">
+            <div className="flex items-center justify-center space-x-2">
+              <span className="text-destructive text-lg">⚠️</span>
+              <p className="text-sm text-destructive font-medium text-center" role="alert">
+                {error}
+              </p>
+            </div>
+          </div>
         )}
         
-        <p className="text-xs text-muted-foreground text-center">
+        <p className="text-sm text-muted-foreground text-center font-medium">
           Enter the 6-digit code sent to your phone
         </p>
       </div>

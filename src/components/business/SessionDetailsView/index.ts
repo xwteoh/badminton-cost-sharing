@@ -1,0 +1,1 @@
+export { SessionDetailsView, type SessionDetailsViewProps } from './SessionDetailsView'

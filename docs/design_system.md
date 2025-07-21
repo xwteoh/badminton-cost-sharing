@@ -1,11 +1,11 @@
 # Design System - Badminton Cost Sharing App
 
-**Version**: 1.0  
-**Last Updated**: 2025-07-13  
+**Version**: 2.0  
+**Last Updated**: 2025-07-21  
 **Platform**: Mobile-First Web Application  
 **Framework**: Next.js 15 + React 19 + Tailwind CSS v4  
 **Target Market**: Singapore Badminton Players  
-**Primary Use**: Cost Tracking and Payment Management
+**Primary Use**: Enterprise Cost Tracking and Payment Management with Premium UI/UX
 
 ---
 
@@ -425,6 +425,95 @@ interface FinancialToastProps {
 - **Language**: English primary, consider basic Chinese/Malay
 - **Payment Methods**: PayNow QR codes, local bank logos
 
+### Enterprise Data Management Components
+
+#### Data Export/Import Components
+```typescript
+interface DataExportModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  organizerId: string;
+}
+
+interface DataImportModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  organizerId: string;
+  onImportComplete: () => void;
+}
+```
+
+**Key Features:**
+- **Export Progress**: Real-time export progress with loading states
+- **Import Validation**: File validation with detailed error reporting
+- **Conflict Resolution**: Automatic handling of duplicate data
+- **Progress Tracking**: Visual progress indicators for large datasets
+- **Success States**: Clear confirmation of successful operations
+
+#### Settings Integration Components
+```typescript
+interface SettingsPageProps {
+  organizerId: string;
+  initialTab?: 'general' | 'data' | 'security';
+}
+```
+
+**Enhanced Features:**
+- **Data Management Tab**: Export/import tools integration
+- **Premium Styling**: Glassmorphism effects throughout
+- **Admin Controls**: Enterprise-grade settings management
+- **Responsive Design**: Mobile-first with desktop enhancements
+
+### Premium UI Design System (v2.0)
+
+#### Glassmorphism Effects
+```css
+/* Standard Premium Card */
+.premium-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.9) 100%);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 24px;
+  box-shadow: 0 32px 64px -12px rgba(0, 0, 0, 0.25);
+}
+
+/* Premium Gradient Backgrounds */
+.premium-background {
+  background: linear-gradient(to bottom right, rgba(124, 58, 237, 0.03), #ffffff, rgba(34, 197, 94, 0.03));
+}
+
+/* Premium Header Text */
+.premium-header {
+  background: linear-gradient(to right, #7c3aed, #6d28d9, #22c55e);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+```
+
+#### Design Patterns Established
+- **Multi-layer Backgrounds**: 3-4 layer gradient systems
+- **Deep Shadows**: `0 32px 64px -12px rgba(0, 0, 0, 0.25)` for premium depth
+- **Color Harmony**: Purple-to-green gradients with status-based themes
+- **Glassmorphism Stack**: Backdrop blur + rgba backgrounds + border highlights
+- **Hardware Acceleration**: `transform: translateZ(0)` for mobile performance
+
+#### Financial Enhancement Patterns
+```typescript
+interface EnhancedMoneyDisplayProps {
+  amount: number;
+  status: 'credit' | 'debt' | 'neutral';
+  variant: 'compact' | 'detailed' | 'premium';
+  showPrecision?: boolean; // 1 decimal place rounding
+}
+```
+
+**New Financial Features:**
+- **Correct Color Logic**: Negative balances = green (credit), positive = red (debt)
+- **1 Decimal Precision**: All money calculations rounded to 1 decimal place
+- **Status-Based Theming**: Consistent color coding across all financial displays
+- **Enhanced Formatting**: Singapore dollar formatting with proper precision
+
 ---
 
 ## 🎬 Motion & Animation
@@ -798,3 +887,219 @@ src/
 - **Storybook**: Component documentation and testing
 - **Figma**: Design handoff and specifications
 - **TypeScript**: Strict typing for component props
+
+---
+
+## 🔐 Role-Based Access Control Components
+
+### RoleGuard Component
+The RoleGuard component provides consistent access control across the application.
+
+#### Design Pattern
+```typescript
+interface RoleGuardProps {
+  allowedRoles: UserRole[]
+  children: React.ReactNode
+  fallback?: React.ReactNode
+  redirectTo?: string
+}
+```
+
+#### Visual States
+- **Loading State**: Skeleton placeholder while role is determined
+- **Access Denied**: Clean error message with branding
+- **Access Granted**: Renders children normally
+
+#### Implementation Example
+```typescript
+<RoleGuard allowedRoles={['organizer']}>
+  <OrganizeerOnlyContent />
+</RoleGuard>
+```
+
+### Access Control Visual Patterns
+
+#### Access Denied Screen
+```typescript
+const AccessDeniedScreen = {
+  background: tokens.colors.background,
+  content: {
+    icon: '🚫',
+    title: 'Access Denied',
+    message: 'You don\'t have permission to access this page',
+    action: 'Return to Dashboard',
+    color: tokens.colors.error,
+  },
+  layout: 'centered',
+  spacing: tokens.spacing.xl,
+}
+```
+
+#### Role-Based Navigation
+```typescript
+// Conditional rendering based on user role
+const NavigationItems = {
+  organizer: [
+    { title: 'Dashboard', path: '/dashboard' },
+    { title: 'Players', path: '/players' },
+    { title: 'Sessions', path: '/sessions' },
+    { title: 'Payments', path: '/payments' },
+  ],
+  player: [
+    { title: 'My Balance', path: '/player-dashboard' },
+    { title: 'Sign Out', action: 'signOut' },
+  ],
+}
+```
+
+### Authentication Visual Patterns
+
+#### Loading States
+```typescript
+const AuthLoadingStates = {
+  roleLoading: {
+    skeleton: true,
+    message: 'Determining access...',
+    duration: 'max 3 seconds',
+  },
+  redirect: {
+    spinner: true,
+    message: 'Redirecting...',
+    duration: 'instant',
+  },
+}
+```
+
+#### Sign Out Button
+```typescript
+const SignOutButton = {
+  variant: 'secondary',
+  size: 'medium',
+  icon: '👋',
+  text: 'Sign out',
+  color: tokens.colors.textSecondary,
+  hover: tokens.colors.error,
+  placement: 'header-right',
+}
+```
+
+### Phone Number Input Enhancement
+
+#### Singapore Phone Formatting
+```typescript
+const PhoneInputSG = {
+  format: '+65 XXXX XXXX',
+  placeholder: '91234567',
+  validation: {
+    pattern: /^[689]\d{7}$/,
+    message: 'Enter valid Singapore mobile number',
+  },
+  normalization: {
+    input: '91234567',
+    output: '+6591234567',
+  },
+}
+```
+
+### Player Dashboard Enhancements
+
+#### Player Name Display
+```typescript
+const PlayerHeader = {
+  greeting: 'Hi {playerName}! 🏸',
+  typography: tokens.typography.fontSize.xl,
+  weight: tokens.typography.fontWeight.semibold,
+  color: tokens.colors.textPrimary,
+  spacing: tokens.spacing.md,
+}
+```
+
+#### Conditional Button Rendering
+```typescript
+const ConditionalActions = {
+  organizer: {
+    button: 'Back to Dashboard',
+    action: 'navigate',
+    path: '/dashboard',
+  },
+  player: {
+    button: 'Sign out',
+    action: 'signOut',
+    icon: '👋',
+    color: tokens.colors.error,
+  },
+}
+```
+
+### Session Card Updates
+
+#### Player View (No Shuttlecocks)
+```typescript
+const SessionCardPlayer = {
+  content: [
+    'session.date',
+    'session.time', 
+    'session.location',
+    'session.cost_per_player',
+    // shuttlecocks_used: hidden
+  ],
+  layout: 'compact',
+  emphasis: 'cost',
+}
+```
+
+#### Organizer View (Full Details)
+```typescript
+const SessionCardOrganizer = {
+  content: [
+    'session.date',
+    'session.time',
+    'session.location', 
+    'session.hours_played',
+    'session.shuttlecocks_used',
+    'session.total_cost',
+    'session.cost_per_player',
+    'session.attendees',
+  ],
+  layout: 'detailed',
+  emphasis: 'breakdown',
+}
+```
+
+### Security Visual Indicators
+
+#### Role Indicators
+```typescript
+const RoleIndicators = {
+  organizer: {
+    badge: 'Organizer',
+    color: tokens.colors.primary,
+    icon: '⚙️',
+  },
+  player: {
+    badge: 'Player', 
+    color: tokens.colors.secondary,
+    icon: '🏸',
+  },
+}
+```
+
+#### Access Level Display
+```typescript
+const AccessLevelDisplay = {
+  full: {
+    label: 'Full Access',
+    color: tokens.colors.success,
+    description: 'Can manage all data',
+  },
+  limited: {
+    label: 'Limited Access',
+    color: tokens.colors.warning,
+    description: 'Can view own data only',
+  },
+}
+```
+
+---
+
+This design system now includes comprehensive patterns for role-based access control, ensuring consistent user experiences across organizer and player interfaces while maintaining security and usability standards.

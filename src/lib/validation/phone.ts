@@ -16,23 +16,27 @@ export function formatSingaporePhone(input: string): string {
   if (digits.startsWith('65') && digits.length >= 3) {
     const remaining = digits.slice(2)
     if (remaining.length <= 8) {
-      return '+65' + remaining
+      return `+65 ${remaining.slice(0, 4)} ${remaining.slice(4)}`
     }
   }
   
   // If starts with 8 or 9 (Singapore mobile prefixes) and is exactly 8 digits
   if ((digits.startsWith('8') || digits.startsWith('9') || digits.startsWith('6')) && digits.length === 8) {
-    return '+65' + digits
+    return `+65 ${digits.slice(0, 4)} ${digits.slice(4)}`
   }
   
   // If full number with country code
   if (digits.startsWith('65') && digits.length === 10) {
-    return '+' + digits
+    const remaining = digits.slice(2)
+    return `+65 ${remaining.slice(0, 4)} ${remaining.slice(4)}`
   }
   
   // Default: add +65 prefix if not present
   if (!input.startsWith('+65')) {
-    return '+65' + digits
+    if (digits.length === 8) {
+      return `+65 ${digits.slice(0, 4)} ${digits.slice(4)}`
+    }
+    return `+65 ${digits}`
   }
   
   return input
@@ -44,7 +48,9 @@ export function formatSingaporePhone(input: string): string {
  * @returns true if valid Singapore format
  */
 export function validateSingaporePhone(phone: string): boolean {
-  return SINGAPORE_PHONE_REGEX.test(phone)
+  // Remove spaces for validation
+  const cleanPhone = phone.replace(/\s/g, '')
+  return SINGAPORE_PHONE_REGEX.test(cleanPhone)
 }
 
 /**
@@ -84,19 +90,37 @@ export function parsePhoneInput(input: string): {
   isValid: boolean
   error?: string
 } {
-  const formatted = formatSingaporePhone(input)
-  const isValid = validateSingaporePhone(formatted)
-  
-  if (!isValid && formatted.length > 0) {
+  if (!input) {
     return {
-      formatted,
+      formatted: '',
+      isValid: false
+    }
+  }
+  
+  // Clean format for validation (no spaces)
+  const digits = input.replace(/\D/g, '')
+  let cleanFormatted = ''
+  
+  if (digits.length === 8 && (digits.startsWith('8') || digits.startsWith('9') || digits.startsWith('6'))) {
+    cleanFormatted = `+65${digits}`
+  } else if (digits.startsWith('65') && digits.length === 10) {
+    cleanFormatted = `+${digits}`
+  } else if (digits.length > 0) {
+    cleanFormatted = `+65${digits}`
+  }
+  
+  const isValid = validateSingaporePhone(cleanFormatted)
+  
+  if (!isValid && cleanFormatted.length > 0) {
+    return {
+      formatted: cleanFormatted,
       isValid: false,
       error: 'Please enter a valid Singapore phone number'
     }
   }
   
   return {
-    formatted,
+    formatted: cleanFormatted,
     isValid
   }
 }

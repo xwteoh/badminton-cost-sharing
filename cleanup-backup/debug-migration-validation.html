@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Migration Validation</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1 { color: #1f2937; margin-bottom: 8px; }
+        .subtitle { color: #6b7280; margin-bottom: 24px; }
+        textarea {
+            width: 100%;
+            height: 300px;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+            resize: vertical;
+            margin-bottom: 12px;
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            margin: 8px 8px 8px 0;
+        }
+        button:hover { background: #2563eb; }
+        .result {
+            background: #f0fdf4;
+            border: 2px solid #bbf7d0;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 16px;
+        }
+        .error {
+            background: #fef2f2;
+            border: 2px solid #fecaca;
+            color: #dc2626;
+        }
+        .warning {
+            background: #fefbf3;
+            border: 2px solid #fed7aa;
+            color: #d97706;
+        }
+        .debug-info {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 12px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 11px;
+            margin: 8px 0;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Debug Migration Validation</h1>
+        <p class="subtitle">Check what's causing your migration validation to fail</p>
+        
+        <label for="input-json"><strong>Your Migration JSON:</strong></label>
+        <textarea id="input-json" placeholder="Paste your migration JSON here..."></textarea>
+        
+        <button onclick="debugValidation()">🔍 Debug Validation</button>
+        <button onclick="fixAndGenerate()">🔧 Fix Issues & Generate Corrected JSON</button>
+        <button onclick="clearAll()">🗑️ Clear</button>
+        
+        <div id="result"></div>
+        
+        <label for="output-json"><strong>Fixed JSON (if needed):</strong></label>
+        <textarea id="output-json" readonly placeholder="Corrected JSON will appear here if fixes are needed..."></textarea>
+    </div>
+
+    <script>
+        function debugValidation() {
+            const inputJson = document.getElementById('input-json').value;
+            
+            if (!inputJson.trim()) {
+                showError('Please paste your migration JSON first');
+                return;
+            }
+            
+            try {
+                const data = JSON.parse(inputJson);
+                const errors = validateMigrationData(data);
+                
+                if (errors.length === 0) {
+                    showSuccess('✅ Validation passed! Your JSON should work with the migration.');
+                } else {
+                    let errorHtml = '<div class="error"><h3>❌ Validation Errors Found:</h3><ul>';
+                    errors.forEach(error => {
+                        errorHtml += `<li>${error}</li>`;
+                    });
+                    errorHtml += '</ul></div>';
+                    
+                    // Add debugging info
+                    errorHtml += '<div class="debug-info">';
+                    errorHtml += `Debug Info:\n`;
+                    errorHtml += `Players count: ${data.players ? data.players.length : 0}\n`;
+                    errorHtml += `Sessions count: ${data.sessions ? data.sessions.length : 0}\n`;
+                    
+                    if (data.sessions) {
+                        data.sessions.forEach((session, i) => {
+                            errorHtml += `\nSession ${i + 1}:\n`;
+                            errorHtml += `  Date: ${session.date} (type: ${typeof session.date})\n`;
+                            errorHtml += `  Location: ${session.location_name} (type: ${typeof session.location_name})\n`;
+                            errorHtml += `  Court Rate: ${session.court_rate} (type: ${typeof session.court_rate})\n`;
+                            errorHtml += `  Shuttle Rate: ${session.shuttle_rate} (type: ${typeof session.shuttle_rate})\n`;
+                            errorHtml += `  Total Hours: ${session.total_hours} (type: ${typeof session.total_hours})\n`;
+                            errorHtml += `  Total Shuttles: ${session.total_shuttles} (type: ${typeof session.total_shuttles})\n`;
+                            errorHtml += `  Total Cost: ${session.total_cost} (type: ${typeof session.total_cost})\n`;
+                            errorHtml += `  Player Count: ${session.player_count} (type: ${typeof session.player_count})\n`;
+                            errorHtml += `  Cost Per Player: ${session.cost_per_player} (type: ${typeof session.cost_per_player})\n`;
+                            errorHtml += `  Participants: ${session.participants ? session.participants.length : 0}\n`;
+                            errorHtml += `  Payments: ${session.payments ? session.payments.length : 0}\n`;
+                        });
+                    }
+                    errorHtml += '</div>';
+                    
+                    document.getElementById('result').innerHTML = errorHtml;
+                }
+                
+            } catch (error) {
+                showError('Invalid JSON: ' + error.message);
+            }
+        }
+        
+        function fixAndGenerate() {
+            const inputJson = document.getElementById('input-json').value;
+            
+            if (!inputJson.trim()) {
+                showError('Please paste your migration JSON first');
+                return;
+            }
+            
+            try {
+                const data = JSON.parse(inputJson);
+                let fixedCount = 0;
+                
+                // Fix sessions
+                if (data.sessions) {
+                    data.sessions.forEach((session, sessionIndex) => {
+                        // Fix numeric fields
+                        if (typeof session.court_rate === 'string') {
+                            session.court_rate = parseFloat(session.court_rate) || 0;
+                            fixedCount++;
+                        }
+                        if (typeof session.shuttle_rate === 'string') {
+                            session.shuttle_rate = parseFloat(session.shuttle_rate) || 0;
+                            fixedCount++;
+                        }
+                        if (typeof session.total_hours === 'string') {
+                            session.total_hours = parseFloat(session.total_hours) || 0;
+                            fixedCount++;
+                        }
+                        if (typeof session.total_shuttles === 'string') {
+                            session.total_shuttles = parseInt(session.total_shuttles) || 0;
+                            fixedCount++;
+                        }
+                        if (typeof session.total_cost === 'string') {
+                            session.total_cost = parseFloat(session.total_cost) || 0;
+                            fixedCount++;
+                        }
+                        if (typeof session.player_count === 'string') {
+                            session.player_count = parseInt(session.player_count) || 0;
+                            fixedCount++;
+                        }
+                        if (typeof session.cost_per_player === 'string') {
+                            session.cost_per_player = parseFloat(session.cost_per_player) || 0;
+                            fixedCount++;
+                        }
+                        
+                        // Fix participants
+                        if (session.participants) {
+                            session.participants.forEach(participant => {
+                                if (typeof participant.amount_owed === 'string') {
+                                    participant.amount_owed = parseFloat(participant.amount_owed) || 0;
+                                    fixedCount++;
+                                }
+                            });
+                        }
+                        
+                        // Fix payments
+                        if (session.payments) {
+                            session.payments.forEach(payment => {
+                                if (typeof payment.amount === 'string') {
+                                    payment.amount = parseFloat(payment.amount) || 0;
+                                    fixedCount++;
+                                }
+                                // Fix payment method for negative amounts
+                                if (payment.amount < 0 && payment.payment_method !== 'credit_transfer') {
+                                    payment.payment_method = 'credit_transfer';
+                                    fixedCount++;
+                                }
+                            });
+                        }
+                    });
+                }
+                
+                const fixedJson = JSON.stringify(data, null, 2);
+                document.getElementById('output-json').value = fixedJson;
+                
+                // Validate the fixed data
+                const errors = validateMigrationData(data);
+                
+                if (errors.length === 0) {
+                    showSuccess(`✅ Fixed ${fixedCount} issues! The corrected JSON should now pass validation.`);
+                } else {
+                    showWarning(`⚠️ Fixed ${fixedCount} issues, but ${errors.length} validation errors remain. See debug output above.`);
+                }
+                
+            } catch (error) {
+                showError('Invalid JSON: ' + error.message);
+            }
+        }
+        
+        // Copy the validation logic from your migration system
+        function validateMigrationData(data) {
+            const errors = [];
+
+            if ((!data.players || data.players.length === 0) && (!data.sessions || data.sessions.length === 0)) {
+                errors.push('No players or sessions provided for migration');
+                return errors;
+            }
+
+            // Validate sessions
+            if (data.sessions) {
+                data.sessions.forEach((session, index) => {
+                    const prefix = `Session ${index + 1}: `;
+
+                    // Required fields validation
+                    if (!session.date) errors.push(`${prefix}Missing date`);
+                    if (!session.location_name) errors.push(`${prefix}Missing location_name`);
+                    if (typeof session.court_rate !== 'number') errors.push(`${prefix}Invalid court_rate (got ${typeof session.court_rate}: ${session.court_rate})`);
+                    if (typeof session.shuttle_rate !== 'number') errors.push(`${prefix}Invalid shuttle_rate (got ${typeof session.shuttle_rate}: ${session.shuttle_rate})`);
+                    if (typeof session.total_hours !== 'number') errors.push(`${prefix}Invalid total_hours (got ${typeof session.total_hours}: ${session.total_hours})`);
+                    if (typeof session.total_shuttles !== 'number') errors.push(`${prefix}Invalid total_shuttles (got ${typeof session.total_shuttles}: ${session.total_shuttles})`);
+                    if (typeof session.total_cost !== 'number') errors.push(`${prefix}Invalid total_cost (got ${typeof session.total_cost}: ${session.total_cost})`);
+                    if (typeof session.player_count !== 'number') errors.push(`${prefix}Invalid player_count (got ${typeof session.player_count}: ${session.player_count})`);
+                    if (typeof session.cost_per_player !== 'number') errors.push(`${prefix}Invalid cost_per_player (got ${typeof session.cost_per_player}: ${session.cost_per_player})`);
+
+                    // Date format validation
+                    if (session.date && !/^\d{4}-\d{2}-\d{2}$/.test(session.date)) {
+                        errors.push(`${prefix}Invalid date format (use YYYY-MM-DD)`);
+                    }
+
+                    // Participants validation
+                    if (!session.participants || session.participants.length === 0) {
+                        errors.push(`${prefix}No participants provided`);
+                    } else {
+                        session.participants.forEach((participant, pIndex) => {
+                            const pPrefix = `${prefix}Participant ${pIndex + 1}: `;
+                            if (!participant.player_name) errors.push(`${pPrefix}Missing player_name`);
+                            if (!participant.phone_number) errors.push(`${pPrefix}Missing phone_number`);
+                            if (typeof participant.amount_owed !== 'number') errors.push(`${pPrefix}Invalid amount_owed (got ${typeof participant.amount_owed}: ${participant.amount_owed})`);
+                        });
+                    }
+
+                    // Payments validation (if provided)
+                    if (session.payments) {
+                        session.payments.forEach((payment, pIndex) => {
+                            const pPrefix = `${prefix}Payment ${pIndex + 1}: `;
+                            if (!payment.player_name) errors.push(`${pPrefix}Missing player_name`);
+                            if (!payment.phone_number) errors.push(`${pPrefix}Missing phone_number`);
+                            if (typeof payment.amount !== 'number') errors.push(`${pPrefix}Invalid amount (got ${typeof payment.amount}: ${payment.amount})`);
+                            if (!payment.payment_date) errors.push(`${pPrefix}Missing payment_date`);
+                            if (!/^\d{4}-\d{2}-\d{2}$/.test(payment.payment_date)) {
+                                errors.push(`${pPrefix}Invalid payment_date format (use YYYY-MM-DD)`);
+                            }
+                            if (!['paynow', 'cash', 'bank_transfer', 'other', 'credit_transfer'].includes(payment.payment_method)) {
+                                errors.push(`${pPrefix}Invalid payment_method`);
+                            }
+                            
+                            // Validate amount constraints to match database rules
+                            if (payment.amount === 0) {
+                                errors.push(`${pPrefix}Payment amount cannot be zero (amount: ${payment.amount}, method: ${payment.payment_method})`);
+                            } else if (payment.payment_method === 'credit_transfer' && payment.amount > 0) {
+                                errors.push(`${pPrefix}Credit transfer should have negative amount (amount: ${payment.amount}, method: ${payment.payment_method})`);
+                            } else if (payment.payment_method !== 'credit_transfer' && payment.amount < 0) {
+                                errors.push(`${pPrefix}Negative amounts require credit_transfer method (amount: ${payment.amount}, method: ${payment.payment_method})`);
+                            }
+                        });
+                    }
+                });
+            }
+
+            return errors;
+        }
+        
+        function clearAll() {
+            document.getElementById('input-json').value = '';
+            document.getElementById('output-json').value = '';
+            document.getElementById('result').innerHTML = '';
+        }
+        
+        function showSuccess(message) {
+            document.getElementById('result').innerHTML = `<div class="result">${message}</div>`;
+        }
+        
+        function showError(message) {
+            document.getElementById('result').innerHTML = `<div class="result error">${message}</div>`;
+        }
+        
+        function showWarning(message) {
+            document.getElementById('result').innerHTML = `<div class="result warning">${message}</div>`;
+        }
+    </script>
+</body>
+</html>

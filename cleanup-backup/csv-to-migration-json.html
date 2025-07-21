@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV to Migration JSON Converter</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1 { color: #1f2937; margin-bottom: 8px; }
+        h2 { color: #374151; margin-top: 32px; margin-bottom: 16px; }
+        .subtitle { color: #6b7280; margin-bottom: 24px; }
+        textarea {
+            width: 100%;
+            height: 200px;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+            resize: vertical;
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            margin: 8px 8px 8px 0;
+        }
+        button:hover { background: #2563eb; }
+        button.secondary {
+            background: #6b7280;
+        }
+        button.secondary:hover { background: #4b5563; }
+        .result {
+            background: #f0fdf4;
+            border: 2px solid #bbf7d0;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 16px;
+        }
+        .error {
+            background: #fef2f2;
+            border: 2px solid #fecaca;
+            color: #dc2626;
+        }
+        .instructions {
+            background: #eff6ff;
+            border: 2px solid #bfdbfe;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 24px;
+        }
+        .instructions h3 {
+            margin-top: 0;
+            color: #1e40af;
+        }
+        .instructions ol {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .instructions li {
+            margin-bottom: 8px;
+        }
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #e5e7eb;
+            margin-bottom: 16px;
+        }
+        .tab {
+            padding: 12px 24px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            font-weight: 500;
+        }
+        .tab.active {
+            border-bottom-color: #3b82f6;
+            color: #3b82f6;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .example {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 12px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 11px;
+            overflow-x: auto;
+            margin: 12px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 MS Access to Migration JSON Converter</h1>
+        <p class="subtitle">Convert your MS Access CSV exports to JSON format for badminton app migration</p>
+        
+        <div class="instructions">
+            <h3>📋 Step-by-Step Instructions:</h3>
+            <ol>
+                <li><strong>Export from MS Access:</strong> Export each table as CSV (comma-delimited)</li>
+                <li><strong>Clean your data:</strong> Remove empty rows, fix phone numbers (+65 format)</li>
+                <li><strong>Use the tabs below:</strong> Convert players first, then sessions</li>
+                <li><strong>Copy the final JSON:</strong> Use the combined result for migration</li>
+            </ol>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" onclick="showTab('players')">👥 Players CSV</div>
+            <div class="tab" onclick="showTab('sessions')">🏸 Sessions CSV</div>
+            <div class="tab" onclick="showTab('combined')">📋 Final JSON</div>
+        </div>
+
+        <div id="players-tab" class="tab-content active">
+            <h2>👥 Players CSV to JSON</h2>
+            <p><strong>Expected CSV columns:</strong> name, phone, active, joined_date, skill_level, notes</p>
+            <div class="example">name,phone,active,joined_date,skill_level,notes
+John Doe,91234567,1,2025-01-15,intermediate,Regular player
+Jane Smith,91234568,1,2025-02-01,advanced,Team captain</div>
+            
+            <textarea id="players-csv" placeholder="Paste your players CSV data here..."></textarea>
+            <button onclick="convertPlayers()">🔄 Convert Players to JSON</button>
+            <button class="secondary" onclick="clearPlayers()">🗑️ Clear</button>
+            
+            <div id="players-result"></div>
+        </div>
+
+        <div id="sessions-tab" class="tab-content">
+            <h2>🏸 Sessions CSV to JSON</h2>
+            <p><strong>Expected CSV columns:</strong> date, location, court_rate, shuttle_rate, hours, shuttles, total_cost, participants</p>
+            <p><strong>Participants format:</strong> "John Doe:+6591234567:18.50,Jane Smith:+6591234568:18.50"</p>
+            <div class="example">date,location,court_rate,shuttle_rate,hours,shuttles,total_cost,participants
+2025-07-15,Badminton Hall A,25.00,8.00,2,3,74.00,"John Doe:+6591234567:18.50,Jane Smith:+6591234568:18.50"</div>
+            
+            <textarea id="sessions-csv" placeholder="Paste your sessions CSV data here..."></textarea>
+            <button onclick="convertSessions()">🔄 Convert Sessions to JSON</button>
+            <button class="secondary" onclick="clearSessions()">🗑️ Clear</button>
+            
+            <div id="sessions-result"></div>
+        </div>
+
+        <div id="combined-tab" class="tab-content">
+            <h2>📋 Final Migration JSON</h2>
+            <p>Copy this JSON and paste it into the Data Migration Tool:</p>
+            
+            <textarea id="final-json" readonly placeholder="Your final migration JSON will appear here..."></textarea>
+            <button onclick="copyToClipboard()">📋 Copy to Clipboard</button>
+            <button onclick="downloadJson()">💾 Download JSON File</button>
+        </div>
+    </div>
+
+    <script>
+        let playersData = [];
+        let sessionsData = [];
+
+        function showTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabName + '-tab').classList.add('active');
+            document.querySelector(`[onclick="showTab('${tabName}')"]`).classList.add('active');
+        }
+
+        function csvToArray(csv) {
+            const lines = csv.trim().split('\n');
+            const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+            const rows = [];
+            
+            for (let i = 1; i < lines.length; i++) {
+                const values = [];
+                let current = '';
+                let inQuotes = false;
+                
+                for (let j = 0; j < lines[i].length; j++) {
+                    const char = lines[i][j];
+                    if (char === '"') {
+                        inQuotes = !inQuotes;
+                    } else if (char === ',' && !inQuotes) {
+                        values.push(current.trim().replace(/"/g, ''));
+                        current = '';
+                    } else {
+                        current += char;
+                    }
+                }
+                values.push(current.trim().replace(/"/g, ''));
+                
+                if (values.length === headers.length) {
+                    const row = {};
+                    headers.forEach((header, index) => {
+                        row[header] = values[index] || '';
+                    });
+                    rows.push(row);
+                }
+            }
+            return rows;
+        }
+
+        function formatPhone(phone) {
+            if (!phone || phone.trim() === '') {
+                return ' '; // Single space to satisfy NOT NULL constraint
+            }
+            
+            // Remove all non-digits
+            const digits = phone.replace(/\D/g, '');
+            
+            // If starts with 65, assume it's already Singapore format
+            if (digits.startsWith('65') && digits.length === 10) {
+                return '+' + digits;
+            }
+            
+            // If 8 digits, assume Singapore local number
+            if (digits.length === 8) {
+                return '+65' + digits;
+            }
+            
+            // If 9 digits starting with 9, assume Singapore mobile
+            if (digits.length === 9 && digits.startsWith('9')) {
+                return '+65' + digits.substring(1);
+            }
+            
+            // Return as is with + if not already there
+            return digits.startsWith('+') ? digits : '+' + digits;
+        }
+
+        function convertPlayers() {
+            const csv = document.getElementById('players-csv').value;
+            if (!csv.trim()) {
+                showError('players-result', 'Please enter CSV data');
+                return;
+            }
+
+            try {
+                const rows = csvToArray(csv);
+                playersData = rows.map(row => {
+                    const player = {
+                        name: row.name || row.player_name || row.Name,
+                        phone_number: formatPhone(row.phone || row.phone_number || row.Phone),
+                        is_active: !row.active || row.active === '1' || row.active.toLowerCase() === 'true' || row.active.toLowerCase() === 'yes'
+                    };
+
+                    // Optional fields
+                    if (row.joined_date || row.joined_at) {
+                        player.joined_at = formatDate(row.joined_date || row.joined_at);
+                    }
+                    if (row.skill_level || row.skill) {
+                        player.skill_level = (row.skill_level || row.skill).toLowerCase();
+                    }
+                    if (row.notes || row.Notes) {
+                        player.notes = row.notes || row.Notes;
+                    }
+                    if (row.email || row.Email) {
+                        player.email = row.email || row.Email;
+                    }
+
+                    return player;
+                });
+
+                showSuccess('players-result', `✅ Converted ${playersData.length} players successfully!`);
+                updateFinalJson();
+            } catch (error) {
+                showError('players-result', 'Error parsing CSV: ' + error.message);
+            }
+        }
+
+        function convertSessions() {
+            const csv = document.getElementById('sessions-csv').value;
+            if (!csv.trim()) {
+                showError('sessions-result', 'Please enter CSV data');
+                return;
+            }
+
+            try {
+                const rows = csvToArray(csv);
+                sessionsData = rows.map(row => {
+                    const participants = [];
+                    
+                    // Parse participants string
+                    if (row.participants) {
+                        const participantsList = row.participants.split(',');
+                        participantsList.forEach(p => {
+                            const parts = p.trim().split(':');
+                            if (parts.length >= 3) {
+                                participants.push({
+                                    player_name: parts[0].trim(),
+                                    phone_number: formatPhone(parts[1].trim()),
+                                    amount_owed: parseFloat(parts[2].trim()) || 0
+                                });
+                            }
+                        });
+                    }
+
+                    return {
+                        date: formatDate(row.date || row.session_date),
+                        location_name: row.location || row.location_name || row.venue,
+                        court_rate: parseFloat(row.court_rate) || 0,
+                        shuttle_rate: parseFloat(row.shuttle_rate) || 0,
+                        total_hours: parseFloat(row.hours || row.total_hours) || 0,
+                        total_shuttles: parseInt(row.shuttles || row.total_shuttles) || 0,
+                        total_cost: parseFloat(row.total_cost) || 0,
+                        player_count: participants.length,
+                        cost_per_player: participants.length > 0 ? (parseFloat(row.total_cost) || 0) / participants.length : 0,
+                        session_name: row.session_name || row.name,
+                        notes: row.notes || row.Notes,
+                        participants: participants
+                    };
+                });
+
+                showSuccess('sessions-result', `✅ Converted ${sessionsData.length} sessions successfully!`);
+                updateFinalJson();
+            } catch (error) {
+                showError('sessions-result', 'Error parsing CSV: ' + error.message);
+            }
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '';
+            
+            // Try to parse various date formats
+            const date = new Date(dateStr);
+            if (isNaN(date.getTime())) {
+                // Try DD/MM/YYYY format
+                const parts = dateStr.split('/');
+                if (parts.length === 3) {
+                    const reformatted = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                    return reformatted;
+                }
+                return dateStr; // Return as is if can't parse
+            }
+            
+            return date.toISOString().split('T')[0]; // YYYY-MM-DD format
+        }
+
+        function updateFinalJson() {
+            const migrationData = {};
+            
+            if (playersData.length > 0) {
+                migrationData.players = playersData;
+            }
+            
+            if (sessionsData.length > 0) {
+                migrationData.sessions = sessionsData;
+            }
+            
+            document.getElementById('final-json').value = JSON.stringify(migrationData, null, 2);
+        }
+
+        function showSuccess(elementId, message) {
+            document.getElementById(elementId).innerHTML = `<div class="result">${message}</div>`;
+        }
+
+        function showError(elementId, message) {
+            document.getElementById(elementId).innerHTML = `<div class="result error">${message}</div>`;
+        }
+
+        function clearPlayers() {
+            document.getElementById('players-csv').value = '';
+            document.getElementById('players-result').innerHTML = '';
+            playersData = [];
+            updateFinalJson();
+        }
+
+        function clearSessions() {
+            document.getElementById('sessions-csv').value = '';
+            document.getElementById('sessions-result').innerHTML = '';
+            sessionsData = [];
+            updateFinalJson();
+        }
+
+        function copyToClipboard() {
+            const jsonText = document.getElementById('final-json').value;
+            if (!jsonText) {
+                alert('No JSON data to copy. Please convert your CSV data first.');
+                return;
+            }
+            
+            navigator.clipboard.writeText(jsonText).then(() => {
+                alert('✅ JSON copied to clipboard! You can now paste it into the migration tool.');
+            }).catch(() => {
+                alert('Failed to copy. Please select all text manually and copy.');
+            });
+        }
+
+        function downloadJson() {
+            const jsonText = document.getElementById('final-json').value;
+            if (!jsonText) {
+                alert('No JSON data to download. Please convert your CSV data first.');
+                return;
+            }
+            
+            const blob = new Blob([jsonText], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'badminton-migration-data.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>

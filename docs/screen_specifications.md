@@ -1,9 +1,10 @@
 # Screen Specifications - Badminton Cost Sharing App
 
-**Version**: 1.0  
-**Last Updated**: 2025-07-13  
+**Version**: 2.0  
+**Last Updated**: 2025-07-21  
 **Platform**: Mobile-First Web Application (PWA)  
-**Design System**: See `design_system.md` for component specifications
+**Design System**: See `design_system.md` for component specifications  
+**Status**: Enterprise Ready with Premium UI/UX and Data Management
 
 ---
 
@@ -231,9 +232,10 @@ This document provides detailed specifications for all screens in the Badminton 
 - **Success**: Navigate to appropriate dashboard
 
 #### Navigation
-- **Success**: Dashboard (role-specific redirect)
+- **Success**: Role-based redirect (organizer → `/dashboard`, player → `/player-dashboard`)
 - **Back**: Return to login screen
 - **Timeout**: Return to login after OTP expires
+- **Access Control**: Automatic role detection with proper redirect handling
 
 #### Accessibility
 - **ARIA Labels**: "Digit 1 of 6", "Verification code input"
@@ -446,6 +448,103 @@ This document provides detailed specifications for all screens in the Badminton 
 - **No Players**: Onboarding flow to add first players
 - **All Zero Balances**: Celebratory state message
 - **Temporary Players**: Distinct visual treatment
+
+#### ORG-004: Edit Player
+
+**Purpose**: Modify existing player information including name, phone number, and active status
+
+**User Goals**:
+- Update player contact information
+- Modify player active status  
+- Add or edit player notes
+- Maintain data accuracy
+
+**Entry Points**:
+- Player overview edit icon
+- Player management table edit action
+- RoleGuard protection (organizer only)
+
+#### Layout Structure
+```
+┌─────────────────────────────┐
+│ ← Edit Player               │
+├─────────────────────────────┤
+│ 👤 Player Information       │
+│ ┌─────────────────────────────┐ │
+│ │ Name                       │ │
+│ │ John Doe                   │ │
+│ ├─────────────────────────────┤ │
+│ │ Phone Number               │ │
+│ │ +65 91234567              │ │
+│ ├─────────────────────────────┤ │
+│ │ Status                     │ │
+│ │ ☑ Active Player           │ │
+│ ├─────────────────────────────┤ │
+│ │ Notes (optional)           │ │
+│ │ Regular Tuesday player     │ │
+│ └─────────────────────────────┘ │
+│                             │
+│ ⚠️ Player has outstanding    │
+│ debt of $25.50              │
+│                             │
+│ [ Cancel ]  [ Save Changes ] │
+└─────────────────────────────┘
+```
+
+#### Components
+1. **Player Information Form**
+   - Type: PlayerEditForm
+   - Props: player, onSubmit, onCancel
+   - Behavior: Form validation with real-time feedback
+
+2. **Status Toggle**
+   - Type: ActiveStatusToggle
+   - Props: isActive, onChange
+   - Behavior: Toggle active/inactive status
+
+3. **Balance Warning**
+   - Type: BalanceWarning
+   - Props: balance, visible
+   - Behavior: Show warning if player has outstanding debt
+
+4. **Action Buttons**
+   - Type: FormActions
+   - Props: onSave, onCancel, loading
+   - Behavior: Save changes or cancel edits
+
+#### User Interactions
+| Action | Trigger | Result |
+|--------|---------|--------|
+| Edit Information | Form input | Update player data in real-time |
+| Toggle Status | Checkbox | Change active/inactive status |
+| Save Changes | Save button | Update player record in database |
+| Cancel Edit | Cancel button | Return to player overview |
+
+#### Data Requirements
+- **Input**: Player ID, updated player information
+- **Output**: Updated player record in database
+- **Validation**: Name required, valid phone format, Singapore number
+
+#### States
+- **Loading**: Show spinner during save operation
+- **Success**: Show success message and redirect
+- **Error**: Display validation errors inline
+- **Confirmation**: Confirm status changes if player has debt
+
+#### Navigation
+- **Success**: Return to player overview with success message
+- **Cancel**: Return to player overview without changes
+- **Back**: Navigate to player overview
+
+#### Accessibility
+- **Form Labels**: All inputs properly labeled
+- **Status Indicators**: Clear active/inactive visual states
+- **Error Messages**: Clear validation feedback
+
+#### Edge Cases
+- **Player with Debt**: Warning when deactivating players with outstanding balance
+- **Duplicate Phone**: Prevent duplicate phone numbers
+- **Invalid Phone**: Singapore phone number validation
 
 ---
 
@@ -672,15 +771,17 @@ This document provides detailed specifications for all screens in the Badminton 
 - Check current balance quickly
 - View upcoming badminton sessions
 - Access payment instructions
+- Sign out securely
 
 **Entry Points**:
 - Login redirect for player role
-- Navigation from any screen
+- RoleGuard protection (player and organizer access)
+- Automatic redirect from home page for player role
 
 #### Layout Structure
 ```
 ┌─────────────────────────────┐
-│ Hi John! 🏸              ⚙️ │
+│ Hi John! 🏸    [👋 Sign out] │
 ├─────────────────────────────┤
 │ 💰 Your Balance             │
 │ ┌─────────────────────────────┐ │
@@ -702,6 +803,7 @@ This document provides detailed specifications for all screens in the Badminton 
 │ ┌─────────────────────────────┐ │
 │ │ 🏸 Tomorrow, 7PM           │ │
 │ │ Sports Hub Court 1         │ │
+│ │ (No shuttlecock info)      │ │
 │ ├─────────────────────────────┤ │
 │ │ 🏸 Thursday, 7PM           │ │
 │ │ Community Center Court A   │ │
@@ -714,8 +816,8 @@ This document provides detailed specifications for all screens in the Badminton 
 #### Components
 1. **Personal Greeting Header**
    - Type: PlayerHeader
-   - Props: playerName, settingsIcon
-   - Behavior: Personalized welcome
+   - Props: playerName, signOutButton
+   - Behavior: Personalized welcome with sign out action
 
 2. **Balance Status Card**
    - Type: PlayerBalanceCard
@@ -729,8 +831,8 @@ This document provides detailed specifications for all screens in the Badminton 
 
 4. **Upcoming Sessions List**
    - Type: UpcomingSessionsList
-   - Props: sessions, limit=3
-   - Behavior: Show next few sessions
+   - Props: sessions, limit=3, hideShuttlecocks=true
+   - Behavior: Show next few sessions without shuttlecock information
 
 #### User Interactions
 | Action | Trigger | Result |
@@ -738,6 +840,7 @@ This document provides detailed specifications for all screens in the Badminton 
 | Copy PayNow | Copy button | Copy to clipboard + toast |
 | View History | Tab navigation | Navigate to transaction history |
 | View Session Details | Session card tap | Session detail view |
+| Sign Out | Sign out button | Authentication logout + redirect to login |
 
 #### Data Requirements
 - **Input**: Player data, balance, upcoming sessions
@@ -768,14 +871,15 @@ This document provides detailed specifications for all screens in the Badminton 
 
 ### Settings & Support
 
-#### SET-001: Organizer Settings
+#### SET-001: Organizer Settings (Enhanced)
 
-**Purpose**: Configuration screen for group settings, rates, and account management
+**Purpose**: Enterprise configuration screen for group settings, rates, account management, and data operations
 
 **User Goals**:
 - Update default court and shuttlecock rates
 - Manage payment instructions
-- Account security and data export
+- Account security and comprehensive data management
+- Export/import organizer data for backup and migration
 
 **Entry Points**:
 - Dashboard settings icon
@@ -801,6 +905,13 @@ This document provides detailed specifications for all screens in the Badminton 
 │ │ (John Organizer)           │ │
 │ └─────────────────────────────┘ │
 │                             │
+│ 📁 Data Management          │
+│ ┌─────────────────────────────┐ │
+│ │ [ Export All Data ]        │ │
+│ │ [ Import Data ]            │ │
+│ │ Last backup: 2025-07-20    │ │
+│ └─────────────────────────────┘ │
+│                             │
 │ 👤 Account                  │
 │ ┌─────────────────────────────┐ │
 │ │ Name: John Organizer       │ │
@@ -809,7 +920,6 @@ This document provides detailed specifications for all screens in the Badminton 
 │ └─────────────────────────────┘ │
 │                             │
 │ 🔐 Security                 │
-│ [ Export Data ]             │
 │ [ Sign Out ]                │
 └─────────────────────────────┘
 ```
@@ -825,21 +935,27 @@ This document provides detailed specifications for all screens in the Badminton 
    - Props: payNowDetails, editable
    - Behavior: Update payment instructions
 
-3. **Account Information Section**
+3. **Data Management Section** (NEW)
+   - Type: DataManagementSection
+   - Props: organizerId, lastBackupDate
+   - Behavior: Export/import data operations with modals
+
+4. **Account Information Section**
    - Type: AccountInfoSection
    - Props: name, phone, role, readonly
    - Behavior: Display account details
 
-4. **Security Actions Section**
+5. **Security Actions Section**
    - Type: SecurityActionsSection
-   - Props: exportAction, signOutAction
-   - Behavior: Data export and logout
+   - Props: signOutAction
+   - Behavior: Logout functionality
 
 #### User Interactions
 | Action | Trigger | Result |
 |--------|---------|--------|
 | Update Rates | Money input change | Save new default rates |
-| Export Data | Export button | Generate and download data |
+| Export All Data | Export button | Open export modal with progress |
+| Import Data | Import button | Open import modal with file upload |
 | Sign Out | Sign out button | Confirm logout dialog |
 
 #### Data Requirements
@@ -865,6 +981,103 @@ This document provides detailed specifications for all screens in the Badminton 
 - **Invalid Rates**: Prevent zero or negative rates
 - **Export Failure**: Show error with retry option
 - **Network Issues**: Cache settings locally
+
+#### DAT-001: Data Export Modal (NEW)
+
+**Purpose**: Export complete organizer data for backup and migration
+
+**Layout Structure**:
+```
+┌─────────────────────────────┐
+│ Export Data                 │
+├─────────────────────────────┤
+│ 📁 Export Complete Data     │
+│                             │
+│ This will export all your   │
+│ group data including:       │
+│ • All players               │
+│ • All sessions              │
+│ • All payments              │
+│ • Balance calculations      │
+│                             │
+│ ████████████░░░ 75%         │
+│ Exporting players...        │
+│                             │
+│ [ Cancel ] [ Download JSON ]│
+└─────────────────────────────┘
+```
+
+**Features**:
+- Real-time export progress
+- Comprehensive data validation
+- JSON format download
+- Error handling with retry options
+
+#### DAT-002: Data Import Modal (NEW)
+
+**Purpose**: Import organizer data from backup files
+
+**Layout Structure**:
+```
+┌─────────────────────────────┐
+│ Import Data                 │
+├─────────────────────────────┤
+│ 📤 Import Backup Data       │
+│                             │
+│ ┌─────────────────────────┐ │
+│ │ Drop JSON file here     │ │
+│ │ or click to browse      │ │
+│ └─────────────────────────┘ │
+│                             │
+│ ⚠️ This will replace        │
+│    existing data            │
+│                             │
+│ [ Cancel ] [ Import Data ]  │
+└─────────────────────────────┘
+```
+
+**Features**:
+- File validation and preview
+- Conflict resolution options
+- Progress tracking for large imports
+- Rollback capability for errors
+
+---
+
+## 🔐 Role-Based Access Control
+
+### RoleGuard Component Pattern
+All organizer-only screens are protected by the RoleGuard component:
+
+```typescript
+<RoleGuard allowedRoles={['organizer']}>
+  <OrganizeerOnlyContent />
+</RoleGuard>
+```
+
+### Access Control Specifications
+| Screen | Allowed Roles | Access Pattern | Redirect Behavior |
+|--------|---------------|----------------|-------------------|
+| `/dashboard` | organizer | RoleGuard protection | Player → player-dashboard |
+| `/players` | organizer | RoleGuard protection | Player → player-dashboard |
+| `/add-player` | organizer | RoleGuard protection | Player → player-dashboard |
+| `/edit-player/[id]` | organizer | RoleGuard protection | Player → player-dashboard |
+| `/create-session` | organizer | RoleGuard protection | Player → player-dashboard |
+| `/record-session` | organizer | RoleGuard protection | Player → player-dashboard |
+| `/record-payment` | organizer | RoleGuard protection | Player → player-dashboard |
+| `/upcoming-sessions` | organizer | RoleGuard protection | Player → player-dashboard |
+| `/player-dashboard` | player, organizer | RoleGuard protection | Organizer can view player perspective |
+
+### Authentication Flow Patterns
+1. **Login Page**: Phone number normalization for Singapore numbers
+2. **OTP Verification**: Role-based redirect after verification
+3. **Home Page**: Automatic redirect based on determined role
+4. **Loading States**: Proper loading indicators during role determination
+
+### Error Handling Patterns
+- **Access Denied**: Clean error page with appropriate messaging
+- **Role Loading**: Skeleton screens while role is determined
+- **Authentication Failures**: Clear error messages with retry options
 
 ---
 

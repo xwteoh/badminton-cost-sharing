@@ -9,98 +9,181 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
+      locations: {
+        Row: {
+          id: string
+          organizer_id: string
+          name: string
+          address: string | null
+          notes: string | null
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organizer_id: string
+          name: string
+          address?: string | null
+          notes?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organizer_id?: string
+          name?: string
+          address?: string | null
+          notes?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
       users: {
         Row: {
           id: string
-          created_at: string
-          updated_at: string
           phone_number: string
           name: string | null
           role: 'organizer' | 'player'
           is_active: boolean
+          created_at: string
+          updated_at: string
         }
         Insert: {
-          id?: string
-          created_at?: string
-          updated_at?: string
+          id: string
           phone_number: string
           name?: string | null
           role: 'organizer' | 'player'
           is_active?: boolean
+          created_at?: string
+          updated_at?: string
         }
         Update: {
           id?: string
-          created_at?: string
-          updated_at?: string
           phone_number?: string
           name?: string | null
           role?: 'organizer' | 'player'
           is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      players: {
+        Row: {
+          id: string
+          organizer_id: string
+          user_id: string | null
+          name: string
+          phone_number: string | null
+          is_temporary: boolean
+          is_active: boolean
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organizer_id: string
+          user_id?: string | null
+          name: string
+          phone_number?: string | null
+          is_temporary?: boolean
+          is_active?: boolean
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organizer_id?: string
+          user_id?: string | null
+          name?: string
+          phone_number?: string | null
+          is_temporary?: boolean
+          is_active?: boolean
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
         }
       }
       sessions: {
         Row: {
           id: string
+          organizer_id: string
+          title: string | null
+          session_date: string
+          start_time: string | null
+          end_time: string | null
+          location: string | null
+          court_cost: number
+          shuttlecock_cost: number
+          other_costs: number
+          total_cost: number
+          player_count: number
+          cost_per_player: number
+          status: 'planned' | 'completed' | 'cancelled'
+          notes: string | null
           created_at: string
           updated_at: string
-          organizer_id: string
-          date: string
-          location: string
-          hours: number
-          shuttlecocks: number
-          total_cost: number
-          status: 'planned' | 'completed' | 'cancelled'
         }
         Insert: {
           id?: string
+          organizer_id: string
+          title?: string | null
+          session_date: string
+          start_time?: string | null
+          end_time?: string | null
+          location?: string | null
+          court_cost: number
+          shuttlecock_cost?: number
+          other_costs?: number
+          player_count: number
+          status?: 'planned' | 'completed' | 'cancelled'
+          notes?: string | null
           created_at?: string
           updated_at?: string
-          organizer_id: string
-          date: string
-          location: string
-          hours: number
-          shuttlecocks: number
-          total_cost: number
-          status?: 'planned' | 'completed' | 'cancelled'
         }
         Update: {
           id?: string
+          organizer_id?: string
+          title?: string | null
+          session_date?: string
+          start_time?: string | null
+          end_time?: string | null
+          location?: string | null
+          court_cost?: number
+          shuttlecock_cost?: number
+          other_costs?: number
+          total_cost?: number
+          player_count?: number
+          cost_per_player?: number
+          status?: 'planned' | 'completed' | 'cancelled'
+          notes?: string | null
           created_at?: string
           updated_at?: string
-          organizer_id?: string
-          date?: string
-          location?: string
-          hours?: number
-          shuttlecocks?: number
-          total_cost?: number
-          status?: 'planned' | 'completed' | 'cancelled'
         }
       }
       session_participants: {
         Row: {
           id: string
           session_id: string
-          user_id: string | null
-          temp_player_name: string | null
-          temp_player_phone: string | null
+          player_id: string
           amount_owed: number
           created_at: string
         }
         Insert: {
           id?: string
           session_id: string
-          user_id?: string | null
-          temp_player_name?: string | null
-          temp_player_phone?: string | null
+          player_id: string
           amount_owed: number
           created_at?: string
         }
         Update: {
           id?: string
           session_id?: string
-          user_id?: string | null
-          temp_player_name?: string | null
-          temp_player_phone?: string | null
+          player_id?: string
           amount_owed?: number
           created_at?: string
         }
@@ -108,33 +191,72 @@ export interface Database {
       payments: {
         Row: {
           id: string
+          organizer_id: string
+          player_id: string
+          amount: number
+          payment_method: 'cash' | 'paynow' | 'bank_transfer' | 'other'
+          payment_date: string
+          reference_number: string | null
+          notes: string | null
           created_at: string
           updated_at: string
-          user_id: string
-          amount: number
-          method: 'paynow' | 'cash' | 'bank_transfer'
-          notes: string | null
-          recorded_by: string
         }
         Insert: {
           id?: string
+          organizer_id: string
+          player_id: string
+          amount: number
+          payment_method: 'cash' | 'paynow' | 'bank_transfer' | 'other'
+          payment_date: string
+          reference_number?: string | null
+          notes?: string | null
           created_at?: string
           updated_at?: string
-          user_id: string
-          amount: number
-          method: 'paynow' | 'cash' | 'bank_transfer'
-          notes?: string | null
-          recorded_by: string
         }
         Update: {
           id?: string
+          organizer_id?: string
+          player_id?: string
+          amount?: number
+          payment_method?: 'cash' | 'paynow' | 'bank_transfer' | 'other'
+          payment_date?: string
+          reference_number?: string | null
+          notes?: string | null
           created_at?: string
           updated_at?: string
-          user_id?: string
-          amount?: number
-          method?: 'paynow' | 'cash' | 'bank_transfer'
-          notes?: string | null
-          recorded_by?: string
+        }
+      }
+      player_balances: {
+        Row: {
+          id: string
+          organizer_id: string
+          player_id: string
+          total_owed: number
+          total_paid: number
+          current_balance: number
+          last_session_date: string | null
+          last_payment_date: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organizer_id: string
+          player_id: string
+          total_owed?: number
+          total_paid?: number
+          last_session_date?: string | null
+          last_payment_date?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organizer_id?: string
+          player_id?: string
+          total_owed?: number
+          total_paid?: number
+          last_session_date?: string | null
+          last_payment_date?: string | null
+          updated_at?: string
         }
       }
     }
@@ -151,10 +273,12 @@ export interface Database {
 }
 
 export type User = Database['public']['Tables']['users']['Row']
+export type Player = Database['public']['Tables']['players']['Row']
 export type Session = Database['public']['Tables']['sessions']['Row']
 export type SessionParticipant = Database['public']['Tables']['session_participants']['Row']
 export type Payment = Database['public']['Tables']['payments']['Row']
+export type PlayerBalance = Database['public']['Tables']['player_balances']['Row']
 
 export type UserRole = 'organizer' | 'player'
 export type SessionStatus = 'planned' | 'completed' | 'cancelled'
-export type PaymentMethod = 'paynow' | 'cash' | 'bank_transfer'
+export type PaymentMethod = 'cash' | 'paynow' | 'bank_transfer' | 'other'

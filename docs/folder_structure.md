@@ -1,9 +1,9 @@
 # Folder Structure - Badminton Cost Sharing App
 
-**Version**: 1.0  
-**Last Updated**: 2025-07-13  
+**Version**: 2.0  
+**Last Updated**: 2025-07-21  
 **Framework**: Next.js 15 + React 19 + TypeScript  
-**Architecture Pattern**: Feature-First with Mobile-First Design
+**Architecture Pattern**: Feature-First with Mobile-First Design + Enterprise Data Management
 
 ---
 
@@ -37,6 +37,10 @@ This document outlines the project's folder structure and organization principle
 badminton-app/
 ├── src/                          # Source code
 │   └── app/                      # Next.js 15 App Router
+├── database/                     # ✅ Database setup
+│   ├── schema.sql               # Database schema with financial precision
+│   ├── rls_policies_simple.sql # Row Level Security policies (working)
+│   └── rls_policies.sql         # Original RLS policies (backup)
 ├── docs/                         # Project documentation
 │   ├── plans/                    # Detailed project plans
 │   ├── project_context.md        # Master requirements
@@ -94,26 +98,27 @@ src/
 │   │   └── layout.tsx           # Auth layout
 │   ├── (dashboard)/              # Dashboard route group
 │   │   ├── dashboard/
-│   │   │   ├── page.tsx         # Dashboard page
-│   │   │   └── loading.tsx      # Loading UI
+│   │   │   └── page.tsx         # ✅ Main dashboard with financial overview
+│   │   ├── record-session/
+│   │   │   └── page.tsx         # ✅ Record session (usage-based calculation)
+│   │   ├── record-payment/
+│   │   │   └── page.tsx         # ✅ Record payment with balance preview
+│   │   ├── player-dashboard/
+│   │   │   └── page.tsx         # ✅ Player personal dashboard
+│   │   ├── players/
+│   │   │   ├── page.tsx         # 🚧 Players list (needed)
+│   │   │   └── [id]/
+│   │   │   │   └── page.tsx     # Player details
 │   │   ├── sessions/
-│   │   │   ├── page.tsx         # Sessions list
+│   │   │   ├── page.tsx         # Sessions history
 │   │   │   ├── [id]/
 │   │   │   │   ├── page.tsx     # Session details
 │   │   │   │   └── edit/
 │   │   │   │       └── page.tsx # Edit session
-│   │   │   ├── new/
-│   │   │   │   └── page.tsx     # Create session
-│   │   │   └── record/
-│   │   │       └── page.tsx     # Record session
-│   │   ├── payments/
-│   │   │   ├── page.tsx         # Payments list
 │   │   │   └── new/
-│   │   │       └── page.tsx     # Record payment
-│   │   ├── players/
-│   │   │   ├── page.tsx         # Players list
-│   │   │   └── [id]/
-│   │   │       └── page.tsx     # Player details
+│   │   │       └── page.tsx     # Create session
+│   │   ├── payments/
+│   │   │   └── page.tsx         # Payments history
 │   │   ├── analytics/           # Organizer only
 │   │   │   └── page.tsx         # Analytics page
 │   │   ├── settings/
@@ -144,30 +149,42 @@ src/
 │   └── favicon.ico              # Favicon
 ├── components/                   # React components
 │   ├── ui/                      # Base UI components
-│   │   ├── Button/
+│   │   ├── Button/              # ✅ Complete
 │   │   │   ├── Button.tsx
 │   │   │   ├── Button.test.tsx
-│   │   │   ├── Button.stories.tsx
 │   │   │   └── index.ts
-│   │   ├── MoneyInput/             # Financial input component
+│   │   ├── MoneyInput/          # ✅ Complete
 │   │   │   ├── MoneyInput.tsx
 │   │   │   ├── MoneyInput.test.tsx
 │   │   │   └── index.ts
-│   │   └── MoneyDisplay/           # Financial display component
+│   │   ├── MoneyDisplay/        # ✅ Complete
+│   │   │   ├── MoneyDisplay.tsx
+│   │   │   ├── MoneyDisplay.test.tsx
+│   │   │   └── index.ts
+│   │   ├── PhoneInputSG/        # ✅ Complete
+│   │   │   ├── PhoneInputSG.tsx
+│   │   │   └── index.ts
+│   │   └── OTPInput/            # ✅ Complete
+│   │       ├── OTPInput.tsx
+│   │       └── index.ts
 │   ├── business/               # Domain-specific components
-│   │   ├── Session/
-│   │   │   ├── SessionCard.tsx     # Session display card
-│   │   │   ├── SessionForm.tsx     # Session creation/edit form
-│   │   │   ├── SessionList.tsx     # Sessions list view
-│   │   │   ├── SessionCostBreakdown.tsx # Cost breakdown display
+│   │   ├── SessionForm/         # ✅ Complete (redesigned)
+│   │   │   ├── SessionForm.tsx   # Usage-based calculation
 │   │   │   └── index.ts
-│   │   ├── Payment/
-│   │   │   ├── PaymentCard.tsx     # Payment display card
-│   │   │   ├── PaymentForm.tsx     # Payment recording form
+│   │   ├── PaymentForm/         # ✅ Complete
+│   │   │   ├── PaymentForm.tsx   # Payment recording with balance preview
 │   │   │   └── index.ts
-│   │   └── Player/
-│   │       ├── PlayerCard.tsx      # Player info card
-│   │       ├── PlayerBalance.tsx   # Balance display
+│   │   ├── PlayerSelectionGrid/ # ✅ Complete
+│   │   │   ├── PlayerSelectionGrid.tsx
+│   │   │   └── index.ts
+│   │   ├── FinancialSummaryCard/ # ✅ Complete
+│   │   │   ├── FinancialSummaryCard.tsx
+│   │   │   └── index.ts
+│   │   ├── QuickActions/        # ✅ Complete
+│   │   │   ├── QuickActions.tsx
+│   │   │   └── index.ts
+│   │   └── RecentActivity/      # ✅ Complete
+│   │       ├── RecentActivity.tsx
 │   │       └── index.ts
 │   ├── layout/                 # Layout components
 │   │   ├── DashboardLayout.tsx     # Main dashboard layout
@@ -183,10 +200,11 @@ src/
 │   │   ├── types.ts            # Supabase types
 │   │   └── middleware.ts       # Auth middleware
 │   ├── calculations/           # Financial calculations
-│   │   ├── money.ts            # Money operations
-│   │   ├── session-costs.ts    # Session cost logic
+│   │   ├── money.ts            # ✅ Money operations (Decimal.js)
+│   │   ├── session-costs.ts    # ✅ Legacy session cost logic
+│   │   ├── usage-costs.ts      # ✅ NEW: Usage-based calculations
 │   │   ├── balance.ts          # Balance calculations
-│   │   └── __tests__/          # Calculation tests
+│   │   └── __tests__/          # Calculation tests (21 money tests)
 │   ├── validation/             # Input validation
 │   │   ├── schemas.ts          # Zod schemas
 │   │   ├── phone.ts            # Phone validation
@@ -197,6 +215,15 @@ src/
 │   │   ├── session.ts          # Session management
 │   │   ├── otp.ts              # OTP handling
 │   │   └── __tests__/          # Auth tests
+│   ├── services/               # ✅ Business service layer
+│   │   ├── players.ts          # ✅ Player CRUD operations
+│   │   ├── sessions.ts         # ✅ Session CRUD operations  
+│   │   ├── payments.ts         # ✅ Payment CRUD operations
+│   │   ├── balances.ts         # ✅ Balance calculations
+│   │   ├── settings.ts         # ✅ Settings management
+│   │   ├── data-export.ts      # ✅ NEW: Data export service
+│   │   ├── data-import.ts      # ✅ NEW: Data import service
+│   │   └── __tests__/          # Service tests
 │   ├── utils/                  # Utility functions
 │   │   ├── constants.ts        # App constants
 │   │   ├── formatters.ts       # Data formatters
@@ -244,9 +271,13 @@ components/
 │   │   ├── PaymentCard.tsx     # Payment display card
 │   │   ├── PaymentForm.tsx     # Payment recording form
 │   │   └── index.ts
-│   └── Player/
-│       ├── PlayerCard.tsx      # Player info card
-│       ├── PlayerBalance.tsx   # Balance display
+│   ├── Player/
+│   │   ├── PlayerCard.tsx      # Player info card
+│   │   ├── PlayerBalance.tsx   # Balance display
+│   │   └── index.ts
+│   └── admin/                  # ✅ NEW: Admin/Enterprise components
+│       ├── DataExportModal.tsx # ✅ Data export modal
+│       ├── DataImportModal.tsx # ✅ Data import modal
 │       └── index.ts
 ├── layout/                 # Layout components
 │   ├── DashboardLayout.tsx     # Main dashboard layout

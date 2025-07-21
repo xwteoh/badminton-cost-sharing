@@ -1,29 +1,35 @@
 'use client'
 
-import { forwardRef } from 'react'
 import { cva, type VariantProps } from 'class-variance-authority'
+import { forwardRef } from 'react'
+
 import { cn } from '@/lib/utils/cn'
 
 const buttonVariants = cva(
-  // Base styles with mobile-first touch targets
-  'inline-flex items-center justify-center whitespace-nowrap rounded-lg font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 touch-manipulation',
+  // Modern base styles with enhanced touch targets and transitions
+  'inline-flex items-center justify-center whitespace-nowrap font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 touch-manipulation relative overflow-hidden',
   {
     variants: {
       variant: {
-        primary: 'bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/80',
-        secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80 active:bg-secondary/70',
-        destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90 active:bg-destructive/80',
-        outline: 'border border-input bg-background hover:bg-accent hover:text-accent-foreground active:bg-accent/80',
+        primary: 'bg-gradient-to-r from-primary to-primary-hover text-primary-foreground shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 active:shadow-sm',
+        secondary: 'bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary-hover hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 active:shadow-sm border border-border',
+        destructive: 'bg-gradient-to-r from-destructive to-destructive text-destructive-foreground shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 active:shadow-sm',
+        success: 'bg-gradient-to-r from-success to-success-hover text-success-foreground shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 active:shadow-sm',
+        warning: 'bg-gradient-to-r from-warning to-warning-hover text-warning-foreground shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 active:shadow-sm',
+        outline: 'border border-input bg-background hover:bg-accent hover:text-accent-foreground active:bg-accent/80 shadow-sm hover:shadow-md',
         ghost: 'hover:bg-accent hover:text-accent-foreground active:bg-accent/80',
         link: 'text-primary underline-offset-4 hover:underline',
+        glass: 'bg-glass-background backdrop-blur-md border border-glass-border hover:bg-glass-background/80 shadow-sm hover:shadow-md',
       },
       size: {
-        // All sizes meet minimum 44px touch target for mobile
-        default: 'h-12 px-6 py-3 text-base', // 48px height (preferred)
+        // Enhanced touch targets with modern spacing
+        default: 'h-12 px-6 py-3 text-base rounded-lg', // 48px height (preferred)
         sm: 'h-11 rounded-md px-4 text-sm', // 44px height (minimum)
-        lg: 'h-14 rounded-lg px-8 text-lg', // 56px height (comfortable)
-        icon: 'h-12 w-12', // 48px square
-        'icon-sm': 'h-11 w-11', // 44px square (minimum)
+        lg: 'h-14 rounded-xl px-8 text-lg', // 56px height (comfortable)
+        xl: 'h-16 rounded-xl px-10 text-xl', // 64px height (large)
+        icon: 'h-12 w-12 rounded-lg', // 48px square
+        'icon-sm': 'h-11 w-11 rounded-md', // 44px square (minimum)
+        'icon-lg': 'h-14 w-14 rounded-xl', // 56px square (comfortable)
       },
       loading: {
         true: 'cursor-not-allowed',
@@ -61,6 +67,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={disabled || loading}
         {...props}
       >
+        {/* Modern loading spinner */}
         {loading && (
           <svg
             className="mr-2 h-4 w-4 animate-spin"
@@ -84,9 +91,20 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
             />
           </svg>
         )}
-        {!loading && leftIcon && <span className="mr-2">{leftIcon}</span>}
-        {children}
-        {!loading && rightIcon && <span className="ml-2">{rightIcon}</span>}
+        
+        {/* Left icon with proper spacing */}
+        {!loading && leftIcon && <span className="mr-2 flex items-center">{leftIcon}</span>}
+        
+        {/* Button content */}
+        <span className="flex items-center justify-center">
+          {children}
+        </span>
+        
+        {/* Right icon with proper spacing */}
+        {!loading && rightIcon && <span className="ml-2 flex items-center">{rightIcon}</span>}
+        
+        {/* Modern ripple effect overlay */}
+        <span className="absolute inset-0 rounded-inherit bg-white opacity-0 transition-opacity duration-200 hover:opacity-10 active:opacity-20 pointer-events-none" />
       </button>
     )
   }
