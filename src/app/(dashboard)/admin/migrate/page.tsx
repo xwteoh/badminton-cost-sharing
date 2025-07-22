@@ -17,8 +17,8 @@ export default function MigratePage() {
     }
   }, [user, userProfile, loading, router])
 
-  // Show loading while checking auth
-  if (loading) {
+  // Show loading while checking auth or while userProfile is loading
+  if (loading || (user && !userProfile)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center space-y-4">

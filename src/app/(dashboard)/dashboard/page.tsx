@@ -92,8 +92,8 @@ export default function OrganizerDashboard() {
     }
   }, [user?.id, loading, loadDashboardData])
 
-  // Show loading state while checking authentication
-  if (loading) {
+  // Show loading state while checking authentication or while userProfile is loading
+  if (loading || (user && !userProfile)) {
     return (
       <div className="min-h-screen flex items-center justify-center relative overflow-hidden" style={{
         background: 'linear-gradient(to bottom right, rgba(124, 58, 237, 0.03), #ffffff, rgba(34, 197, 94, 0.03))'
