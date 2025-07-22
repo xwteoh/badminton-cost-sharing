@@ -998,7 +998,8 @@ export default function PlayerDashboardPage() {
                                     {new Date(payment.payment_date).toLocaleDateString('en-SG', { 
                                       weekday: 'long', 
                                       month: 'short', 
-                                      day: 'numeric' 
+                                      day: 'numeric',
+                                      year: 'numeric'
                                     })}
                                   </h4>
                                   <p className="font-medium" style={{ color: '#6b7280' }}>{payment.payment_method}</p>
