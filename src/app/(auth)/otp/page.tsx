@@ -171,12 +171,7 @@ export default function OTPPage() {
           }}>
             <span className="text-2xl">🏸</span>
           </div>
-          <div className="animate-spin rounded-full h-8 w-8 mx-auto" style={{
-            borderBottom: '2px solid #7c3aed',
-            borderTop: '2px solid transparent',
-            borderLeft: '2px solid transparent',
-            borderRight: '2px solid transparent'
-          }}></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-200 mx-auto" style={{ borderTopColor: '#7c3aed' }}></div>
           <p className="text-sm" style={{ color: '#6b7280' }}>Already logged in, redirecting to dashboard...</p>
         </div>
       </div>

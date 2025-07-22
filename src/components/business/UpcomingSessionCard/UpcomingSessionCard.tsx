@@ -464,9 +464,12 @@ export function UpcomingSessionCard({
           backgroundColor: 'rgba(255, 255, 255, 0.8)',
           borderRadius: '24px'
         }}>
-          <div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{
-            borderColor: session.status === 'planned' ? '#3b82f6' : session.status === 'completed' ? '#22c55e' : '#ef4444',
-            borderTopColor: 'transparent'
+          <div className={`w-6 h-6 border-2 rounded-full animate-spin ${
+            session.status === 'planned' ? 'border-blue-200' : 
+            session.status === 'completed' ? 'border-green-200' : 
+            'border-red-200'
+          }`} style={{
+            borderTopColor: session.status === 'planned' ? '#3b82f6' : session.status === 'completed' ? '#22c55e' : '#ef4444'
           }}></div>
         </div>
       )}

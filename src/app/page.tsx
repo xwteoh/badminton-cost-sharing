@@ -47,7 +47,7 @@ export default function HomePage() {
           <span className="text-3xl">🏸</span>
         </div>
         <div className="flex justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-200" style={{ borderTopColor: '#7c3aed' }}></div>
         </div>
         <h1 className="text-xl font-semibold text-foreground">
           Badminton Cost Tracker

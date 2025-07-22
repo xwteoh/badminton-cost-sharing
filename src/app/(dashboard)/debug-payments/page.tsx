@@ -226,7 +226,7 @@ export default function DebugPaymentsPage() {
       {/* Loading State */}
       {isAnalyzing && (
         <div className="text-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-200 mx-auto mb-4" style={{ borderTopColor: '#2563eb' }}></div>
           <p className="text-gray-600">Analyzing payment data...</p>
         </div>
       )}

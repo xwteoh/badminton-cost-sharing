@@ -268,8 +268,7 @@ export default function FinancialReportsPage() {
           <div className="space-y-4">
             <div className="relative">
               <div className="w-12 h-12 mx-auto">
-                <div className="absolute inset-0 rounded-full border-4" style={{ borderColor: 'rgba(34, 197, 94, 0.2)' }}></div>
-                <div className="absolute inset-0 rounded-full border-4 border-transparent animate-spin" style={{ borderTopColor: '#22c55e' }}></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-4 border-green-200" style={{ borderTopColor: '#22c55e' }}></div>
               </div>
             </div>
             <div className="space-y-2">

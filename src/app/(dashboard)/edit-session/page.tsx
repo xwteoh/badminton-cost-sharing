@@ -118,7 +118,7 @@ export default function EditSessionPage() {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-orange-500 to-red-600 rounded-2xl shadow-lg mb-4">
             <span className="text-2xl">✏️</span>
           </div>
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-orange-200 mx-auto" style={{ borderTopColor: '#f97316' }}></div>
           <p className="text-sm text-gray-600">
             {loading || dataLoading ? 'Loading session data...' : 'Loading players...'}
           </p>

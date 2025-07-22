@@ -73,7 +73,7 @@ export default function SessionDetailsPage() {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl shadow-lg mb-4">
             <span className="text-3xl text-white">📋</span>
           </div>
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-200 mx-auto" style={{ borderTopColor: '#3b82f6' }}></div>
           <p className="text-sm text-gray-600">Loading session details...</p>
         </div>
       </div>

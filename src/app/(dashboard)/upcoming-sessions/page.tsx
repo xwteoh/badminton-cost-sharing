@@ -83,13 +83,46 @@ export default function UpcomingSessionsPage() {
   // Show loading while checking auth or loading sessions
   if (loading || sessionsLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-        <div className="text-center space-y-4">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-500/10 mb-4">
-            <span className="text-2xl">📋</span>
+      <div className="min-h-screen flex items-center justify-center relative overflow-hidden" style={{
+        background: 'linear-gradient(to bottom right, rgba(59, 130, 246, 0.03), #ffffff, rgba(34, 197, 94, 0.03))'
+      }}>
+        <div className="absolute inset-0" style={{
+          background: 'linear-gradient(to bottom right, rgba(59, 130, 246, 0.05), transparent, rgba(34, 197, 94, 0.05))'
+        }}></div>
+        <div className="absolute top-0 left-0 w-96 h-96 rounded-full blur-3xl -translate-x-48 -translate-y-48" style={{
+          background: 'linear-gradient(to bottom right, rgba(59, 130, 246, 0.08), transparent)'
+        }}></div>
+        <div className="absolute bottom-0 right-0 w-80 h-80 rounded-full blur-3xl translate-x-40 translate-y-40" style={{
+          background: 'linear-gradient(to top left, rgba(34, 197, 94, 0.08), transparent)'
+        }}></div>
+        
+        <div className="relative z-10 text-center space-y-6">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl backdrop-blur-md shadow-2xl mb-6" style={{
+            background: 'linear-gradient(to bottom right, rgba(59, 130, 246, 0.2), rgba(34, 197, 94, 0.2))',
+            border: '1px solid rgba(255, 255, 255, 0.3)'
+          }}>
+            <span className="text-4xl filter drop-shadow-lg">📋</span>
           </div>
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
-          <p className="text-sm text-gray-600">Loading sessions...</p>
+          <div className="space-y-4">
+            <div className="relative">
+              <div className="w-12 h-12 mx-auto">
+                <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-200" style={{ borderTopColor: '#3b82f6' }}></div>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-xl font-bold" style={{
+                background: 'linear-gradient(to right, #3b82f6, #22c55e)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text'
+              }}>
+                Loading Upcoming Sessions
+              </h3>
+              <p className="text-sm font-medium" style={{ color: '#6b7280' }}>
+                Fetching planned sessions and schedules...
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     )

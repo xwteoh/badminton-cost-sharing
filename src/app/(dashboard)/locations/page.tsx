@@ -164,8 +164,7 @@ export default function LocationsPage() {
           <div className="space-y-4">
             <div className="relative">
               <div className="w-12 h-12 mx-auto">
-                <div className="absolute inset-0 rounded-full border-4" style={{ borderColor: 'rgba(245, 158, 11, 0.2)' }}></div>
-                <div className="absolute inset-0 rounded-full border-4 border-transparent animate-spin" style={{ borderTopColor: '#f59e0b' }}></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-4 border-amber-200" style={{ borderTopColor: '#f59e0b' }}></div>
               </div>
             </div>
             <div className="space-y-2">

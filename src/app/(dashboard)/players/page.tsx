@@ -164,14 +164,26 @@ export default function PlayersPage() {
           }}>
             <span className="text-4xl filter drop-shadow-lg">👥</span>
           </div>
-          <h3 className="text-xl font-bold" style={{
-            background: 'linear-gradient(to right, #7c3aed, #22c55e)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text'
-          }}>
-            Loading Players
-          </h3>
+          <div className="space-y-4">
+            <div className="relative">
+              <div className="w-12 h-12 mx-auto">
+                <div className="animate-spin rounded-full h-12 w-12 border-4 border-purple-200" style={{ borderTopColor: '#7c3aed' }}></div>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-xl font-bold" style={{
+                background: 'linear-gradient(to right, #7c3aed, #22c55e)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text'
+              }}>
+                Loading Players
+              </h3>
+              <p className="text-sm font-medium" style={{ color: '#6b7280' }}>
+                Fetching player data and balances...
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     )
