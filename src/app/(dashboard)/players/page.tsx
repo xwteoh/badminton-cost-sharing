@@ -151,8 +151,8 @@ export default function PlayersPage() {
     }
   }, [user?.id, fetchPlayers])
 
-  // Show loading while checking auth or while userProfile is loading
-  if (loading || (user && !userProfile)) {
+  // Show loading while checking auth
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center relative overflow-hidden" style={{
         background: 'linear-gradient(to bottom right, rgba(124, 58, 237, 0.03), #ffffff, rgba(34, 197, 94, 0.03))'
@@ -193,8 +193,8 @@ export default function PlayersPage() {
     return null
   }
 
-  // Check role from userProfile instead of user object
-  if (userProfile?.role !== 'organizer') {
+  // Check role from userProfile - only show access denied if profile is loaded and role is not organizer
+  if (userProfile && userProfile.role !== 'organizer') {
     return (
       <div className="min-h-screen flex items-center justify-center relative overflow-hidden" style={{
         background: 'linear-gradient(to bottom right, rgba(239, 68, 68, 0.03), #ffffff, rgba(245, 158, 11, 0.03))'

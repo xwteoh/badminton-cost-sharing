@@ -17,8 +17,8 @@ export default function MigratePage() {
     }
   }, [user, userProfile, loading, router])
 
-  // Show loading while checking auth or while userProfile is loading
-  if (loading || (user && !userProfile)) {
+  // Show loading while checking auth
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center space-y-4">
@@ -30,7 +30,7 @@ export default function MigratePage() {
   }
 
   // Show access denied if not organizer
-  if (!user || userProfile?.role !== 'organizer') {
+  if (!user || (userProfile && userProfile.role !== 'organizer')) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center space-y-4">

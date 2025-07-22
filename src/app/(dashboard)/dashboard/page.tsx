@@ -92,8 +92,8 @@ export default function OrganizerDashboard() {
     }
   }, [user?.id, loading, loadDashboardData])
 
-  // Show loading state while checking authentication or while userProfile is loading
-  if (loading || (user && !userProfile)) {
+  // Show loading state while checking authentication
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center relative overflow-hidden" style={{
         background: 'linear-gradient(to bottom right, rgba(124, 58, 237, 0.03), #ffffff, rgba(34, 197, 94, 0.03))'
@@ -145,8 +145,8 @@ export default function OrganizerDashboard() {
     return null
   }
 
-  // Check role from userProfile instead of using RoleGuard
-  if (userProfile?.role !== 'organizer') {
+  // Check role from userProfile - only show access denied if profile is loaded and role is not organizer
+  if (userProfile && userProfile.role !== 'organizer') {
     return (
       <div className="min-h-screen flex items-center justify-center relative overflow-hidden" style={{
         background: 'linear-gradient(to bottom right, rgba(239, 68, 68, 0.03), #ffffff, rgba(245, 158, 11, 0.03))'
