@@ -28,8 +28,13 @@ export default function OrganizerDashboard() {
     console.log('🔗 Dashboard: Current location:', window.location.href)
     console.log('🔗 Dashboard: Router object:', router)
     
-    // Simple direct navigation - no try-catch complications
-    window.location.href = path
+    try {
+      // Use Next.js router for better app navigation
+      router.push(path)
+    } catch (error) {
+      console.error('🔗 Dashboard: Router navigation failed, falling back to window.location:', error)
+      window.location.href = path
+    }
   }, [router])
 
   const quickActions = useMemo(() => createQuickActions(handleNavigation), [handleNavigation])

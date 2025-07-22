@@ -22,20 +22,20 @@ export function RoleGuard({ children, allowedRoles, redirectTo }: RoleGuardProps
       return
     }
 
-    // If we have a role but it's not allowed, redirect
+    // Only redirect if we have a role loaded AND it's not allowed
     if (role && !allowedRoles.includes(role)) {
       if (role === 'player') {
         // Players can only access player dashboard
         window.location.href = '/player-dashboard'
-      } else if (role === 'organizer') {
-        // Organizers can access dashboard
+      } else {
+        // Other roles redirect to their default page
         window.location.href = redirectTo || '/dashboard'
       }
       return
     }
   }, [user, role, loading, allowedRoles, redirectTo])
 
-  // Show loading while checking auth OR while we have a user but no role yet
+  // Show loading while checking auth OR while waiting for role to load
   if (loading || !user || (user && !role)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
