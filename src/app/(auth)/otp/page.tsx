@@ -19,19 +19,19 @@ export default function OTPPage() {
   const searchParams = useSearchParams()
   
   // Use useAuth directly - no try-catch with hooks
-  const { verifyOtp, signInWithPhone, user, role, loading } = useAuth()
+  const { verifyOtp, signInWithPhone, user, userProfile, role, loading } = useAuth()
   const phone = searchParams.get('phone') || ''
 
   // Only redirect if user is already authenticated when page loads
   useEffect(() => {
-    if (!loading && user && role) {
+    if (!loading && user && role && userProfile) {
       if (role === 'organizer') {
         window.location.href = '/dashboard'
       } else {
         window.location.href = '/player-dashboard'
       }
     }
-  }, [loading, user, role])
+  }, [loading, user, role, userProfile])
 
   // Redirect if no phone number
   useEffect(() => {
@@ -84,14 +84,47 @@ export default function OTPPage() {
         return
       }
 
-      // Success - redirect based on role (wait for role to be set)
-      setTimeout(() => {
-        if (role === 'organizer') {
-          window.location.href = '/dashboard'
-        } else {
-          window.location.href = '/player-dashboard'
+      // Success - wait for complete user profile to be loaded before redirecting
+      console.log('🔐 OTP verification successful, waiting for complete profile...')
+      
+      // Use a polling approach with timeout to wait for complete profile
+      let attempts = 0
+      const maxAttempts = 30 // Max 15 seconds (30 * 500ms)
+      
+      const checkProfileAndRedirect = () => {
+        attempts++
+        console.log(`🔐 Checking profile attempt ${attempts}:`, { 
+          hasRole: !!role, 
+          hasUserProfile: !!userProfile,
+          roleValue: role,
+          profilePhone: userProfile?.phone_number
+        })
+        
+        // Wait for both role AND userProfile to be available
+        if (role && role !== null && userProfile && userProfile.id) {
+          // Complete profile is now available, redirect accordingly
+          console.log('🔐 Complete profile loaded, redirecting...', { role, profileId: userProfile.id })
+          if (role === 'organizer') {
+            window.location.href = '/dashboard'
+          } else {
+            window.location.href = '/player-dashboard'
+          }
+          return
         }
-      }, 500) // Small delay to ensure role is set
+        
+        if (attempts >= maxAttempts) {
+          // Timeout reached, redirect to home page which will handle role-based redirect
+          console.warn('🔐 Profile loading timeout, redirecting to home page')
+          window.location.href = '/'
+          return
+        }
+        
+        // Continue checking
+        setTimeout(checkProfileAndRedirect, 500)
+      }
+      
+      // Start the profile checking process
+      setTimeout(checkProfileAndRedirect, 100)
       
     } catch (error) {
       console.error('OTP verification error:', error)

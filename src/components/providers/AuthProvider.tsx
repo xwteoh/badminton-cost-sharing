@@ -118,30 +118,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.log('🔐 User session found, setting user state')
           setUser(session.user)
           
-          // Don't set a default role immediately - wait for database lookup
-          
-          // Only fetch profile if we don't already have one to prevent loops
-          if (!userProfile || userProfile.id !== session.user.id) {
-            try {
-              await fetchUserProfile(session.user.id)
-            } catch (error) {
-              console.error('🔐 Auth state change: fetchUserProfile failed:', {
-                error,
-                message: error instanceof Error ? error.message : 'Unknown error',
-                stack: error instanceof Error ? error.stack : undefined
-              })
-              // Only set default if profile fetch fails
-              setRole('player')
-              setUserProfile({
-                id: session.user.id,
-                phone_number: session.user.phone || '',
-                name: null,
-                role: 'player',
-                is_active: true,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-              })
-            }
+          // Always fetch profile to ensure we have the latest data
+          // This prevents race conditions during initial login
+          try {
+            await fetchUserProfile(session.user.id)
+          } catch (error) {
+            console.error('🔐 Auth state change: fetchUserProfile failed:', {
+              error,
+              message: error instanceof Error ? error.message : 'Unknown error',
+              stack: error instanceof Error ? error.stack : undefined
+            })
+            // Only set default if profile fetch fails
+            setRole('player')
+            setUserProfile({
+              id: session.user.id,
+              phone_number: session.user.phone || '',
+              name: null,
+              role: 'player',
+              is_active: true,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
           }
           setLoading(false)
         } else {
@@ -164,40 +161,75 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     console.log('👤 Fetching user profile for:', userId)
     
     try {
-      // Query real user profile from database
-      const { data: userProfile, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', userId)
-        .single()
+      // Add retry logic with exponential backoff for better reliability
+      let attempts = 0
+      const maxAttempts = 3
+      let lastError = null
       
-      console.log('👤 Database query result:', { userProfile, error, userId })
-      
-      if (userProfile) {
-        console.log('👤 Found existing user profile:', userProfile)
-        console.log('👤 Setting role to:', userProfile.role)
-        setUserProfile(userProfile)
-        setRole(userProfile.role)
-        return
+      while (attempts < maxAttempts) {
+        attempts++
+        console.log(`👤 Database query attempt ${attempts} for user:`, userId)
+        
+        try {
+          // Query real user profile from database with longer timeout
+          const { data: userProfile, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', userId)
+            .single()
+          
+          console.log('👤 Database query result:', { userProfile, error, userId, attempt: attempts })
+          
+          if (userProfile) {
+            console.log('👤 Found existing user profile:', userProfile)
+            console.log('👤 Setting role to:', userProfile.role)
+            setUserProfile(userProfile)
+            setRole(userProfile.role)
+            return
+          }
+          
+          // No profile found, create one
+          if (error?.code === 'PGRST116') {
+            console.log('👤 No profile found (PGRST116), creating new user profile')
+            await createUserProfile(userId)
+            return
+          }
+          
+          // Store error for potential retry
+          lastError = error
+          
+          // If it's a transient error, retry
+          if (error?.message?.includes('timeout') || error?.message?.includes('network') || attempts < maxAttempts) {
+            const delay = Math.pow(2, attempts - 1) * 1000 // Exponential backoff: 1s, 2s, 4s
+            console.log(`👤 Retrying database query in ${delay}ms due to error:`, error?.message)
+            await new Promise(resolve => setTimeout(resolve, delay))
+            continue
+          }
+          
+          // Non-retryable error
+          break
+          
+        } catch (queryError) {
+          lastError = queryError
+          if (attempts < maxAttempts) {
+            const delay = Math.pow(2, attempts - 1) * 1000
+            console.log(`👤 Query exception, retrying in ${delay}ms:`, queryError)
+            await new Promise(resolve => setTimeout(resolve, delay))
+            continue
+          }
+          break
+        }
       }
       
-      // No profile found, create one
-      if (error?.code === 'PGRST116') {
-        console.log('👤 No profile found (PGRST116), creating new user profile')
-        await createUserProfile(userId)
-        return
-      }
-      
-      // Other database errors
-      console.error('👤 Database error fetching user profile:', {
-        code: error?.code,
-        message: error?.message,
-        details: error?.details,
-        hint: error?.hint
+      // All attempts failed
+      console.error('👤 All database query attempts failed:', {
+        lastError,
+        attempts,
+        userId
       })
       
-      // For other errors, try to create profile anyway
-      console.log('👤 Attempting to create user profile due to error')
+      // Try to create profile anyway
+      console.log('👤 Attempting to create user profile due to persistent errors')
       await createUserProfile(userId)
       return
       

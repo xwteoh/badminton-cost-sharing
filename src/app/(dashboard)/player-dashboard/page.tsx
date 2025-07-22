@@ -54,25 +54,32 @@ export default function PlayerDashboardPage() {
 
   // Check if organizer is viewing another player's dashboard
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && userProfile) {
       const params = new URLSearchParams(window.location.search)
       const playerId = params.get('playerId')
-      if (playerId && userProfile?.role === 'organizer') {
+      if (playerId && userProfile.role === 'organizer') {
         setViewingPlayerId(playerId)
         setOrganizerId(user?.id || null)
         setIsOrganizerView(true)
-      } else if (userProfile?.role === 'player') {
+      } else if (userProfile.role === 'player' && userProfile.phone_number) {
         findPlayerRecord()
       }
     }
-  }, [userProfile?.role, userProfile?.phone_number, user?.id])
+  }, [userProfile, user?.id])
 
   // Function to find player record for logged-in players
   const findPlayerRecord = async () => {
-    if (!userProfile?.phone_number) return
+    if (!userProfile?.phone_number) {
+      console.log('🔍 No phone number available for player lookup')
+      return
+    }
+    
+    console.log('🔍 Finding player record for phone:', userProfile.phone_number)
     
     try {
-      console.log('🔍 Finding player record using database function')
+      setDataLoading(true)
+      setError(null)
+      
       const { createClientSupabaseClient } = await import('@/lib/supabase/client')
       const supabase = createClientSupabaseClient()
       
@@ -82,6 +89,7 @@ export default function PlayerDashboardPage() {
       if (error) {
         console.log('❌ Database function error:', error)
         setError(`Database error: ${error.message}`)
+        setDataLoading(false)
         return
       }
       
@@ -95,10 +103,12 @@ export default function PlayerDashboardPage() {
       } else {
         console.log('❌ No player record found')
         setError('Player record not found. Please contact your organizer.')
+        setDataLoading(false)
       }
     } catch (err) {
       console.error('Error finding player record:', err)
       setError('Failed to load player data.')
+      setDataLoading(false)
     }
   }
 
@@ -196,8 +206,8 @@ export default function PlayerDashboardPage() {
     loadPlayerData()
   }, [viewingPlayerId, organizerId])
 
-  // Check authentication and role
-  if (loading) {
+  // Check authentication and role - also show loading during data fetch
+  if (loading || (userProfile && dataLoading)) {
     return (
       <div className="min-h-screen flex items-center justify-center relative overflow-hidden" style={{
         background: 'linear-gradient(to bottom right, rgba(124, 58, 237, 0.03), #ffffff, rgba(34, 197, 94, 0.03))'
@@ -236,7 +246,7 @@ export default function PlayerDashboardPage() {
                 Loading Player Dashboard
               </h3>
               <p className="text-sm font-medium" style={{ color: '#6b7280' }}>
-                Preparing your badminton data...
+                {dataLoading ? 'Loading player data...' : 'Preparing your badminton data...'}
               </p>
             </div>
           </div>
