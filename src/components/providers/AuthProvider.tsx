@@ -61,13 +61,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             await fetchUserProfile(session.user.id)
           } catch (error) {
             console.error('🔐 AuthProvider: Error fetching profile on initial load:', error)
-            // Only set default if profile fetch fails
+            // Default to player role for security - only organizers get dashboard access
             setRole('player')
             setUserProfile({
               id: session.user.id,
               phone_number: session.user.phone || '',
               name: null,
-              role: 'player',
+              role: 'player' as 'player',
               is_active: true,
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
@@ -158,13 +158,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               message: error instanceof Error ? error.message : 'Unknown error',
               stack: error instanceof Error ? error.stack : undefined
             })
-            // Only set default if profile fetch fails
+            // Default to player role for security - only organizers get dashboard access
             setRole('player')
             setUserProfile({
               id: session.user.id,
               phone_number: session.user.phone || '',
               name: null,
-              role: 'player',
+              role: 'player' as 'player',
               is_active: true,
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
@@ -191,6 +191,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     console.log('👤 Fetching user profile for:', userId)
     
     try {
+      // First, test basic Supabase connectivity
+      console.log('🔍 Testing Supabase connection...')
+      const { data: connectionTest, error: connectionError } = await supabase
+        .from('users')
+        .select('count', { count: 'exact' })
+        .limit(0)
+      
+      console.log('🔍 Supabase connection test:', { 
+        connectionTest, 
+        connectionError,
+        canConnect: !connectionError 
+      })
+      
+      if (connectionError) {
+        console.error('❌ Supabase connection failed:', connectionError)
+        throw new Error(`Database connection failed: ${connectionError.message}`)
+      }
+      
       // Add retry logic with exponential backoff for better reliability
       let attempts = 0
       const maxAttempts = 3
@@ -202,13 +220,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         try {
           // Query real user profile from database with longer timeout
+          console.log('👤 Executing query: SELECT * FROM users WHERE id =', userId)
           const { data: userProfile, error } = await supabase
             .from('users')
             .select('*')
             .eq('id', userId)
             .single()
           
-          console.log('👤 Database query result:', { userProfile, error, userId, attempt: attempts })
+          console.log('👤 Database query result:', { 
+            userProfile, 
+            error, 
+            userId, 
+            attempt: attempts,
+            hasData: !!userProfile,
+            errorCode: error?.code,
+            errorMessage: error?.message,
+            errorDetails: error?.details 
+          })
           
           if (userProfile) {
             console.log('👤 Found existing user profile:', userProfile)
@@ -279,12 +307,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         userId
       })
       
-      // Always provide a fallback profile
+      // Always provide a fallback profile with player role for security
       const fallbackProfile = {
         id: userId,
         phone_number: user?.phone || '',
         name: null,
-        role: 'player' as const,
+        role: 'player' as 'player',
         is_active: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -315,21 +343,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return
       }
       
-      // Default all new users to 'organizer' role for testing
-      // This ensures dashboard access works immediately
-      const userRole = 'organizer' // Changed from 'player' to 'organizer' for testing
+      // Default new users to 'player' role for security
+      // Only promote to organizer manually in database when needed
+      const userRole = 'player'
       
-      console.log('👤 Creating user profile with organizer role for testing:', { userPhone, userRole })
+      console.log('👤 Creating user profile with player role:', { userPhone, userRole })
       
       const newUserProfile = {
         id: userId,
         phone_number: userPhone,
         name: null,
-        role: userRole as const,
+        role: userRole,
         is_active: true,
       }
       
       console.log('👤 Creating new user profile:', newUserProfile)
+      
+      // First, check current authentication status
+      const { data: { user: authUser } } = await supabase.auth.getUser()
+      console.log('👤 Auth user before insert:', { 
+        authUserId: authUser?.id, 
+        targetUserId: userId,
+        idsMatch: authUser?.id === userId 
+      })
       
       const { data, error } = await supabase
         .from('users')
@@ -343,10 +379,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           message: error.message,
           code: error.code,
           details: error.details,
-          hint: error.hint
+          hint: error.hint,
+          possibleCauses: {
+            rls_policy_blocking: error.code === '42501' || error.message?.includes('policy'),
+            auth_required: error.code === '401' || error.message?.includes('JWT'),
+            constraint_violation: error.code === '23505',
+            missing_permissions: error.message?.includes('permission')
+          }
         })
         
-        // If user already exists error, try to fetch it
+        // Handle different error types
         if (error.code === '23505') { // Unique constraint violation
           console.log('👤 User already exists, trying to fetch existing profile')
           const { data: fetchedUser, error: fetchError } = await supabase
@@ -361,6 +403,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setRole(fetchedUser.role)
             return
           }
+        }
+        
+        // Handle RLS policy issues
+        if (error.code === '42501' || error.message?.includes('policy')) {
+          console.warn('🔒 RLS policy blocking user creation, using fallback profile')
+          // Create fallback profile with player role for security
+          const fallbackProfile = {
+            id: userId,
+            phone_number: userPhone,
+            name: null,
+            role: 'player' as 'player',
+            is_active: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }
+          setUserProfile(fallbackProfile)
+          setRole('player')
+          console.log('👤 Using RLS fallback player profile')
+          return
         }
         
         throw error
@@ -378,19 +439,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         userId
       })
       
-      // Fallback: create a client-side profile for this session with organizer role
+      // Fallback: create a client-side profile for this session with player role for security
       const fallbackProfile = {
         id: userId,
         phone_number: user?.phone || '',
         name: null,
-        role: 'organizer' as const, // Changed to organizer for testing
+        role: 'player' as 'player',
         is_active: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }
       setUserProfile(fallbackProfile)
-      setRole('organizer') // Changed to organizer for testing
-      console.log('👤 Using fallback organizer profile after creation failed')
+      setRole('player')
+      console.log('👤 Using fallback player profile after creation failed')
       // Don't throw error here - let the app continue with fallback profile
     }
   }

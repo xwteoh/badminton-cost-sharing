@@ -1,0 +1,20 @@
+{
+  "name": "Badminton Cost Sharing App",
+  "short_name": "Badminton App",
+  "description": "Mobile-first cost sharing application for badminton groups",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#7c3aed",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "any",
+      "type": "image/x-icon"
+    }
+  ],
+  "categories": ["sports", "finance", "utilities"],
+  "lang": "en",
+  "scope": "/"
+}

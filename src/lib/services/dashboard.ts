@@ -68,6 +68,19 @@ export class DashboardService {
         queriedUserId: user?.id || organizerId 
       })
 
+      // Test basic table access first
+      console.log('📊 DashboardService: Testing player_balances table access...')
+      const { data: testAccess, error: testError } = await this.supabase
+        .from('player_balances')
+        .select('count', { count: 'exact' })
+        .limit(0)
+      
+      console.log('📊 DashboardService: Table access test:', { 
+        testAccess, 
+        testError,
+        canAccessTable: !testError 
+      })
+
       // Get all player balances for this organizer
       console.log('📊 DashboardService: Querying player_balances with organizer_id:', organizerId)
       const { data: balances, error: balancesError } = await this.supabase
@@ -87,7 +100,10 @@ export class DashboardService {
       console.log('📊 DashboardService: Player balances query result:', { 
         balancesCount: balances?.length, 
         balancesError,
-        firstBalance: balances?.[0] 
+        errorCode: balancesError?.code,
+        errorMessage: balancesError?.message,
+        firstBalance: balances?.[0],
+        queryExecuted: `SELECT *, players!inner(...) FROM player_balances WHERE organizer_id = '${organizerId}' AND players.is_active = true`
       })
 
       if (balancesError) {
