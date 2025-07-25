@@ -58,7 +58,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.log('🔐 AuthProvider: Fetching user profile to determine role')
           
           try {
-            await fetchUserProfile(session.user.id)
+            // Add timeout to fetchUserProfile to prevent hanging - reduced to 3 seconds
+            const profileTimeout = new Promise((_, reject) => {
+              setTimeout(() => reject(new Error('Profile fetch timeout')), 3000)
+            })
+            
+            await Promise.race([
+              fetchUserProfile(session.user.id),
+              profileTimeout
+            ])
           } catch (error) {
             console.error('🔐 AuthProvider: Error fetching profile on initial load:', error)
             // Provide immediate fallback profile
@@ -83,7 +91,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               console.log('🔐 AuthProvider: Fallback session check succeeded')
               setUser(session.user)
               try {
-                await fetchUserProfile(session.user.id)
+                // Add timeout to prevent hanging
+                const profileTimeout = new Promise((_, reject) => {
+                  setTimeout(() => reject(new Error('Profile fetch timeout')), 3000)
+                })
+                
+                await Promise.race([
+                  fetchUserProfile(session.user.id),
+                  profileTimeout
+                ])
               } catch (profileError) {
                 console.error('🔐 AuthProvider: Error fetching profile on fallback:', profileError)
                 await provideFallbackProfile(session.user.id)
@@ -133,7 +149,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Always fetch profile to ensure we have the latest data
           // This prevents race conditions during initial login
           try {
-            await fetchUserProfile(session.user.id)
+            // Add timeout to prevent hanging
+            const profileTimeout = new Promise((_, reject) => {
+              setTimeout(() => reject(new Error('Profile fetch timeout')), 3000)
+            })
+            
+            await Promise.race([
+              fetchUserProfile(session.user.id),
+              profileTimeout
+            ])
           } catch (error) {
             console.error('🔐 Auth state change: fetchUserProfile failed:', {
               error,
@@ -173,22 +197,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })
     
     try {
-      // First, test basic Supabase connectivity
-      console.log('🔍 Testing Supabase connection...')
-      const { data: connectionTest, error: connectionError } = await supabase
-        .from('users')
-        .select('count', { count: 'exact' })
-        .limit(0)
+      // First, test basic Supabase connectivity with a simple query
+      console.log('🔍 Testing Supabase connection with simple query...')
       
-      console.log('🔍 Supabase connection test:', { 
-        connectionTest, 
-        connectionError,
-        canConnect: !connectionError 
-      })
-      
-      if (connectionError) {
-        console.error('❌ Supabase connection failed:', connectionError)
-        throw new Error(`Database connection failed: ${connectionError.message}`)
+      try {
+        const { data: allUsers, error: allUsersError } = await supabase
+          .from('users')
+          .select('id, role')
+          .limit(5)
+        
+        console.log('🔍 Sample users query result:', { 
+          userCount: allUsers?.length,
+          users: allUsers,
+          allUsersError,
+          canConnect: !allUsersError
+        })
+        
+        if (allUsersError) {
+          console.error('❌ Basic users query failed:', allUsersError)
+          throw new Error(`Database query failed: ${allUsersError.message}`)
+        }
+      } catch (connectionError) {
+        console.error('❌ Supabase connection test failed:', connectionError)
+        throw new Error(`Database connection failed: ${connectionError}`)
       }
       
       // Add retry logic with exponential backoff for better reliability
@@ -209,7 +240,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             .from('users')
             .select('*')
             .eq('id', userId)
-            .single()
+            .maybeSingle() // Use maybeSingle to avoid PGRST116 errors
           
           console.log('👤 Database query result:', { 
             userProfile, 
@@ -256,7 +287,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                   .from('users')
                   .select('*')
                   .eq('phone_number', authUser.phone)
-                  .single()
+                  .maybeSingle()
                 
                 console.log('👤 User lookup by phone result:', { userByPhone, phoneError })
                 
@@ -347,6 +378,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Get phone from current auth session
     const { data: { user: authUser } } = await supabase.auth.getUser()
     
+    // Try one more direct query attempt before falling back
+    try {
+      console.log('🔄 Last attempt: Direct query for user profile')
+      const { data: directUser, error: directError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle() // Use maybeSingle instead of single to avoid PGRST116 error
+      
+      console.log('🔄 Direct query result:', { directUser, directError })
+      
+      if (directUser) {
+        console.log('✅ Direct query succeeded! Setting profile:', directUser)
+        setUserProfile(directUser)
+        setRole(directUser.role)
+        return
+      }
+      
+      // If still no user, try phone lookup
+      if (authUser?.phone) {
+        console.log('🔄 Trying phone lookup as final attempt:', authUser.phone)
+        const { data: phoneUser, error: phoneError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('phone_number', authUser.phone)
+          .maybeSingle()
+        
+        console.log('🔄 Phone lookup result:', { phoneUser, phoneError })
+        
+        if (phoneUser) {
+          console.log('✅ Phone lookup succeeded! Setting profile:', phoneUser)
+          setUserProfile(phoneUser)
+          setRole(phoneUser.role)
+          return
+        }
+      }
+    } catch (error) {
+      console.error('🔄 Direct query attempts failed:', error)
+    }
+    
+    // Final fallback: Create client-side profile with player role
     const fallbackProfile = {
       id: userId,
       phone_number: authUser?.phone || user?.phone || '',
@@ -359,7 +431,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     setUserProfile(fallbackProfile)
     setRole('player')
-    console.log('✅ Immediate fallback profile set:', fallbackProfile)
+    console.log('✅ Final fallback profile set (player role):', fallbackProfile)
   }
 
   const createUserProfile = async (userId: string) => {
