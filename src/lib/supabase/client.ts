@@ -30,6 +30,17 @@ export function createClientSupabaseClient(): ReturnType<typeof createClient<Dat
       detectSessionInUrl: true,
       flowType: 'pkce',
     },
+    db: {
+      schema: 'public',
+    },
+    global: {
+      headers: {
+        'x-client-info': 'badminton-app@1.0.0',
+      },
+    },
+    realtime: {
+      timeout: 10000,
+    },
   })
   
   return supabaseInstance

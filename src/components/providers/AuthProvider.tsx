@@ -89,47 +89,60 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     console.log('🔍 AuthProvider: Loading user profile for ID:', userId)
     
     try {
-      // Test basic Supabase connection first
+      // Create a timeout wrapper for Vercel environment
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Database query timeout after 10 seconds')), 10000)
+      })
+
+      // Test basic Supabase connection first with timeout
       console.log('🔍 AuthProvider: Testing Supabase connection...')
-      const { data: connectionTest } = await supabase
-        .from('users')
-        .select('count', { count: 'exact' })
-        .limit(0)
+      const connectionTest = await Promise.race([
+        supabase.from('users').select('count', { count: 'exact' }).limit(0),
+        timeoutPromise
+      ])
       
       console.log('🔍 AuthProvider: Connection test result:', connectionTest)
 
-      // Try to get existing user profile
+      // Try to get existing user profile with timeout
       console.log('🔍 AuthProvider: Querying for user profile...')
-      const { data: existingUser, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle()
+      const profileQuery = await Promise.race([
+        supabase.from('users').select('*').eq('id', userId).maybeSingle(),
+        timeoutPromise
+      ]) as { data: any, error: any }
 
       console.log('🔍 AuthProvider: User profile query result:', { 
-        existingUser, 
-        error,
-        hasUser: !!existingUser,
-        userRole: existingUser?.role 
+        existingUser: profileQuery.data, 
+        error: profileQuery.error,
+        hasUser: !!profileQuery.data,
+        userRole: profileQuery.data?.role 
       })
 
-      if (existingUser) {
+      if (profileQuery.data) {
         console.log('✅ AuthProvider: User profile found, setting state')
-        setUserProfile(existingUser)
-        setRole(existingUser.role)
+        setUserProfile(profileQuery.data)
+        setRole(profileQuery.data.role)
         return
       }
 
       // If no profile exists, create one
-      if (!existingUser && !error) {
+      if (!profileQuery.data && !profileQuery.error) {
         console.log('🔄 AuthProvider: No profile found, creating new one')
         await createUserProfile(userId)
-      } else if (error) {
-        console.error('❌ AuthProvider: Database error:', error)
+      } else if (profileQuery.error) {
+        console.error('❌ AuthProvider: Database error:', profileQuery.error)
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ AuthProvider: Error loading user profile:', error)
-      // Don't create profile if there's a database error
+      
+      // If it's a timeout error on Vercel, try creating a fallback user profile
+      if (error.message?.includes('timeout')) {
+        console.log('🔄 AuthProvider: Timeout detected, attempting fallback user creation')
+        try {
+          await createUserProfile(userId)
+        } catch (fallbackError) {
+          console.error('❌ AuthProvider: Fallback creation also failed:', fallbackError)
+        }
+      }
     }
   }
 
