@@ -32,10 +32,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('🔐 AuthProvider: Getting initial session...')
       
       try {
-        // Add timeout to prevent hanging - increased to 4 seconds
+        // Add timeout to prevent hanging - increased to 10 seconds for better reliability
         const sessionPromise = supabase.auth.getSession()
         const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Session check timeout')), 4000)
+          setTimeout(() => reject(new Error('Session check timeout')), 10000)
         })
         
         const { data: { session }, error } = await Promise.race([
@@ -82,6 +82,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false)
       } catch (error) {
         console.error('🔐 AuthProvider: Error getting initial session:', error)
+        
+        // If it's a timeout, try once more without timeout as a fallback
+        if (error instanceof Error && error.message === 'Session check timeout') {
+          console.warn('🔐 AuthProvider: Session check timed out, trying once more without timeout...')
+          try {
+            const { data: { session }, error: fallbackError } = await supabase.auth.getSession()
+            if (session?.user && !fallbackError) {
+              console.log('🔐 AuthProvider: Fallback session check succeeded')
+              setUser(session.user)
+              try {
+                await fetchUserProfile(session.user.id)
+              } catch (profileError) {
+                console.error('🔐 AuthProvider: Error fetching profile on fallback:', profileError)
+                setRole('player')
+                setUserProfile({
+                  id: session.user.id,
+                  phone_number: session.user.phone || '',
+                  name: null,
+                  role: 'player',
+                  is_active: true,
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString(),
+                })
+              }
+            }
+          } catch (fallbackError) {
+            console.error('🔐 AuthProvider: Fallback session check also failed:', fallbackError)
+          }
+        }
+        
         setLoading(false)
       }
     }
