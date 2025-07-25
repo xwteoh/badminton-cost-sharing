@@ -86,15 +86,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const loadUserProfile = async (userId: string) => {
+    console.log('🔍 AuthProvider: Loading user profile for ID:', userId)
+    
     try {
+      // Test basic Supabase connection first
+      console.log('🔍 AuthProvider: Testing Supabase connection...')
+      const { data: connectionTest } = await supabase
+        .from('users')
+        .select('count', { count: 'exact' })
+        .limit(0)
+      
+      console.log('🔍 AuthProvider: Connection test result:', connectionTest)
+
       // Try to get existing user profile
+      console.log('🔍 AuthProvider: Querying for user profile...')
       const { data: existingUser, error } = await supabase
         .from('users')
         .select('*')
         .eq('id', userId)
         .maybeSingle()
 
+      console.log('🔍 AuthProvider: User profile query result:', { 
+        existingUser, 
+        error,
+        hasUser: !!existingUser,
+        userRole: existingUser?.role 
+      })
+
       if (existingUser) {
+        console.log('✅ AuthProvider: User profile found, setting state')
         setUserProfile(existingUser)
         setRole(existingUser.role)
         return
@@ -102,10 +122,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // If no profile exists, create one
       if (!existingUser && !error) {
+        console.log('🔄 AuthProvider: No profile found, creating new one')
         await createUserProfile(userId)
+      } else if (error) {
+        console.error('❌ AuthProvider: Database error:', error)
       }
     } catch (error) {
-      console.error('Error loading user profile:', error)
+      console.error('❌ AuthProvider: Error loading user profile:', error)
       // Don't create profile if there's a database error
     }
   }
