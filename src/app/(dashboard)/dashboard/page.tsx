@@ -48,28 +48,64 @@ export default function OrganizerDashboard() {
 
     try {
       console.log('📊 Dashboard: Loading live dashboard data for user:', user.id)
+      console.log('📊 Dashboard: User object:', { id: user.id, phone: user.phone })
+      console.log('📊 Dashboard: UserProfile:', userProfile)
       setDataLoading(true)
       setDataError(null)
 
-      // Load all dashboard data in parallel
-      const [financialData, activitiesData, statsData] = await Promise.all([
+      // Load all dashboard data in parallel with individual error handling
+      console.log('📊 Dashboard: Starting parallel data loading...')
+      
+      const [financialResult, activitiesResult, statsResult] = await Promise.allSettled([
         dashboardService.getFinancialSummary(user.id),
         dashboardService.getRecentActivities(user.id, 6),
         dashboardService.getDashboardStats(user.id)
       ])
 
-      console.log('✅ Dashboard: Live data loaded successfully')
-      setFinancialSummary(financialData)
-      setRecentActivities(activitiesData)
-      setDashboardStats(statsData)
+      console.log('📊 Dashboard: Parallel loading results:', {
+        financial: financialResult.status,
+        activities: activitiesResult.status,
+        stats: statsResult.status
+      })
+
+      // Handle individual results
+      if (financialResult.status === 'fulfilled') {
+        console.log('✅ Dashboard: Financial data loaded:', financialResult.value)
+        setFinancialSummary(financialResult.value)
+      } else {
+        console.error('❌ Dashboard: Financial data failed:', financialResult.reason)
+      }
+
+      if (activitiesResult.status === 'fulfilled') {
+        console.log('✅ Dashboard: Activities data loaded:', activitiesResult.value.length, 'items')
+        setRecentActivities(activitiesResult.value)
+      } else {
+        console.error('❌ Dashboard: Activities data failed:', activitiesResult.reason)
+      }
+
+      if (statsResult.status === 'fulfilled') {
+        console.log('✅ Dashboard: Stats data loaded:', statsResult.value)
+        setDashboardStats(statsResult.value)
+      } else {
+        console.error('❌ Dashboard: Stats data failed:', statsResult.reason)
+      }
+
+      // Only show error if all requests failed
+      const allFailed = [financialResult, activitiesResult, statsResult].every(result => result.status === 'rejected')
+      if (allFailed) {
+        const firstError = financialResult.status === 'rejected' ? financialResult.reason : 'Unknown error'
+        setDataError(firstError?.message || 'Failed to load dashboard data')
+      }
+
+      console.log('✅ Dashboard: Data loading completed')
 
     } catch (error: any) {
-      console.error('❌ Dashboard: Error loading live data:', error)
+      console.error('❌ Dashboard: Unexpected error in loadDashboardData:', error)
       setDataError(error.message || 'Failed to load dashboard data')
     } finally {
       setDataLoading(false)
     }
-  }, [user?.id])
+  }, [user?.id, userProfile])
 
   // Redirect unauthenticated users to login - Chrome-safe implementation
   useEffect(() => {
@@ -92,8 +128,23 @@ export default function OrganizerDashboard() {
 
   // Load dashboard data when user is authenticated
   useEffect(() => {
+    console.log('📊 Dashboard: useEffect for data loading', { 
+      hasUserId: !!user?.id, 
+      userId: user?.id, 
+      loading, 
+      userProfile: userProfile?.role,
+      dataLoading 
+    })
+    
     if (user?.id && !loading) {
+      console.log('📊 Dashboard: Conditions met, calling loadDashboardData')
       loadDashboardData()
+    } else {
+      console.log('📊 Dashboard: Conditions not met for data loading', {
+        hasUserId: !!user?.id,
+        loading,
+        reason: !user?.id ? 'No user ID' : loading ? 'Still loading auth' : 'Unknown'
+      })
     }
   }, [user?.id, loading, loadDashboardData])
 

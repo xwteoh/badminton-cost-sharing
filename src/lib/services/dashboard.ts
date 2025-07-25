@@ -48,7 +48,28 @@ export class DashboardService {
     console.log('📊 DashboardService: Loading financial summary for organizer:', organizerId)
 
     try {
+      // First check if current user exists and has organizer role
+      const { data: { user } } = await this.supabase.auth.getUser()
+      console.log('📊 DashboardService: Current authenticated user:', { 
+        id: user?.id, 
+        phone: user?.phone 
+      })
+      
+      // Check user role in database
+      const { data: userProfile, error: userError } = await this.supabase
+        .from('users')
+        .select('id, role, name, phone_number')
+        .eq('id', user?.id || organizerId)
+        .single()
+      
+      console.log('📊 DashboardService: User profile lookup:', { 
+        userProfile, 
+        userError,
+        queriedUserId: user?.id || organizerId 
+      })
+
       // Get all player balances for this organizer
+      console.log('📊 DashboardService: Querying player_balances with organizer_id:', organizerId)
       const { data: balances, error: balancesError } = await this.supabase
         .from('player_balances')
         .select(`
@@ -62,6 +83,12 @@ export class DashboardService {
         `)
         .eq('organizer_id', organizerId)
         .eq('players.is_active', true)
+      
+      console.log('📊 DashboardService: Player balances query result:', { 
+        balancesCount: balances?.length, 
+        balancesError,
+        firstBalance: balances?.[0] 
+      })
 
       if (balancesError) {
         console.error('❌ Error fetching player balances:', balancesError)
@@ -74,12 +101,22 @@ export class DashboardService {
       const thirtyDaysAgo = new Date()
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
       
+      console.log('📊 DashboardService: Querying sessions with:', { 
+        organizerId, 
+        thirtyDaysAgo: thirtyDaysAgo.toISOString().split('T')[0] 
+      })
       const { data: recentSessions, error: sessionsError } = await this.supabase
         .from('sessions')
         .select('id, total_cost, session_date')
         .eq('organizer_id', organizerId)
         .eq('status', 'completed')
         .gte('session_date', thirtyDaysAgo.toISOString().split('T')[0])
+      
+      console.log('📊 DashboardService: Sessions query result:', { 
+        sessionsCount: recentSessions?.length, 
+        sessionsError,
+        firstSession: recentSessions?.[0] 
+      })
 
       if (sessionsError) {
         console.error('❌ Error fetching recent sessions:', sessionsError)
