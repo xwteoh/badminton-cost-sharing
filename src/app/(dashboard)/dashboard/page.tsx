@@ -201,6 +201,42 @@ export default function OrganizerDashboard() {
     return null
   }
 
+  // Show loading if user exists but profile is still being fetched
+  if (user && !userProfile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center relative overflow-hidden" style={{
+        background: 'linear-gradient(to bottom right, rgba(124, 58, 237, 0.03), #ffffff, rgba(34, 197, 94, 0.03))'
+      }}>
+        <div className="relative z-10 text-center space-y-6">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl backdrop-blur-md shadow-2xl mb-6" style={{
+            background: 'linear-gradient(to bottom right, rgba(124, 58, 237, 0.2), rgba(34, 197, 94, 0.2))',
+            border: '1px solid rgba(255, 255, 255, 0.3)'
+          }}>
+            <span className="text-4xl filter drop-shadow-lg">🏸</span>
+          </div>
+          <div className="space-y-4">
+            <div className="relative">
+              <div className="w-12 h-12 mx-auto">
+                <div className="animate-spin rounded-full h-12 w-12 border-4 border-purple-200" style={{ borderTopColor: '#7c3aed' }}></div>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-xl font-bold" style={{
+                background: 'linear-gradient(to right, #7c3aed, #22c55e)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text'
+              }}>
+                Loading Profile
+              </h3>
+              <p className="text-sm font-medium" style={{ color: '#6b7280' }}>Setting up your account...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   // Check role from userProfile - only show access denied if profile is loaded and role is not organizer
   if (userProfile && userProfile.role !== 'organizer') {
     return (

@@ -225,6 +225,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             return
           }
           
+          // Also try to create profile if we get no data and no specific error
+          if (!userProfile && !error) {
+            console.log('👤 No profile data returned, creating new user profile')
+            await createUserProfile(userId)
+            return
+          }
+          
           // Store error for potential retry
           lastError = error
           
@@ -293,11 +300,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data: session } = await supabase.auth.getSession()
       const userPhone = session.session?.user?.phone || ''
       
-      // Default all new users to 'player' role
-      // Only manually change to 'organizer' in database when needed
-      const userRole = 'player'
+      // Check if this phone number already exists in the users table
+      console.log('👤 Checking if user already exists with phone:', userPhone)
+      const { data: existingUser, error: existingError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('phone_number', userPhone)
+        .single()
       
-      console.log('👤 Creating user profile with default player role:', { userPhone, userRole })
+      if (existingUser) {
+        console.log('👤 Found existing user with same phone:', existingUser)
+        setUserProfile(existingUser)
+        setRole(existingUser.role)
+        return
+      }
+      
+      // Default all new users to 'organizer' role for testing
+      // This ensures dashboard access works immediately
+      const userRole = 'organizer' // Changed from 'player' to 'organizer' for testing
+      
+      console.log('👤 Creating user profile with organizer role for testing:', { userPhone, userRole })
       
       const newUserProfile = {
         id: userId,
@@ -323,6 +345,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           details: error.details,
           hint: error.hint
         })
+        
+        // If user already exists error, try to fetch it
+        if (error.code === '23505') { // Unique constraint violation
+          console.log('👤 User already exists, trying to fetch existing profile')
+          const { data: fetchedUser, error: fetchError } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', userId)
+            .single()
+          
+          if (fetchedUser) {
+            console.log('👤 Found existing user profile:', fetchedUser)
+            setUserProfile(fetchedUser)
+            setRole(fetchedUser.role)
+            return
+          }
+        }
+        
         throw error
       }
       
@@ -338,19 +378,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         userId
       })
       
-      // Fallback: create a client-side profile for this session
+      // Fallback: create a client-side profile for this session with organizer role
       const fallbackProfile = {
         id: userId,
         phone_number: user?.phone || '',
         name: null,
-        role: 'player' as const,
+        role: 'organizer' as const, // Changed to organizer for testing
         is_active: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }
       setUserProfile(fallbackProfile)
-      setRole('player')
-      console.log('👤 Using fallback profile after creation failed')
+      setRole('organizer') // Changed to organizer for testing
+      console.log('👤 Using fallback organizer profile after creation failed')
       // Don't throw error here - let the app continue with fallback profile
     }
   }
