@@ -8,7 +8,6 @@ import { QuickActions, createQuickActions } from '@/components/business/QuickAct
 import { RecentActivity, createActivityItem, type ActivityItem } from '@/components/business/RecentActivity'
 import { useAuth } from '@/components/providers/AuthProvider'
 import { Button } from '@/components/ui/Button'
-import { hasOrganizerAccess } from '@/lib/auth/role-verification'
 import { dashboardService, type DashboardFinancialSummary, type DashboardActivity, type DashboardStats } from '@/lib/services/dashboard'
 
 // Import admin functions for development (makes window.promoteByPhone available)
@@ -27,15 +26,6 @@ export default function OrganizerDashboard() {
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null)
   const [dataLoading, setDataLoading] = useState(true)
   const [dataError, setDataError] = useState<string | null>(null)
-  const [roleVerification, setRoleVerification] = useState<{
-    isVerifying: boolean
-    hasAccess: boolean | null
-    verificationError: string | null
-  }>({
-    isVerifying: true,
-    hasAccess: null,
-    verificationError: null
-  })
 
   // ALL HOOKS MUST BE AT THE TOP - BEFORE ANY RETURNS
   const handleNavigation = useCallback((path: string) => {
@@ -141,83 +131,19 @@ export default function OrganizerDashboard() {
     }
   }, [user, loading, hasRedirected])
 
-  // Load dashboard data when user is authenticated AND profile is loaded
+  // Redirect non-organizers
   useEffect(() => {
-    console.log('📊 Dashboard: useEffect for data loading', { 
-      hasUserId: !!user?.id, 
-      userId: user?.id, 
-      loading, 
-      hasUserProfile: !!userProfile,
-      userRole: userProfile?.role,
-      dataLoading 
-    })
-    
-    // Wait for both user authentication AND profile to be loaded
-    if (user?.id && !loading && userProfile) {
-      console.log('📊 Dashboard: All conditions met, calling loadDashboardData')
+    if (!loading && user && userProfile && userProfile.role !== 'organizer') {
+      router.push('/player-dashboard')
+    }
+  }, [loading, user, userProfile, router])
+
+  // Load dashboard data when authenticated organizer
+  useEffect(() => {
+    if (user?.id && !loading && userProfile?.role === 'organizer') {
       loadDashboardData()
-    } else {
-      console.log('📊 Dashboard: Conditions not met for data loading', {
-        hasUserId: !!user?.id,
-        loading,
-        hasUserProfile: !!userProfile,
-        reason: !user?.id ? 'No user ID' 
-              : loading ? 'Still loading auth' 
-              : !userProfile ? 'User profile not loaded yet'
-              : 'Unknown'
-      })
     }
-  }, [user?.id, loading, userProfile, loadDashboardData])
-
-  // Secure role verification - verify organizer access from database
-  useEffect(() => {
-    const verifyOrganizerRole = async () => {
-      if (!user?.id || loading || !userProfile) {
-        console.log('🔐 Role verification: Waiting for auth and profile completion', {
-          hasUser: !!user?.id,
-          loading,
-          hasProfile: !!userProfile
-        })
-        return
-      }
-
-      console.log('🔐 Role verification: Starting secure role check for user:', user.id)
-      setRoleVerification(prev => ({ ...prev, isVerifying: true }))
-
-      try {
-        const hasAccess = await hasOrganizerAccess(user.id)
-        console.log('🔐 Role verification: Database check result:', { hasAccess })
-        
-        setRoleVerification({
-          isVerifying: false,
-          hasAccess,
-          verificationError: null
-        })
-
-        // If no access, redirect to appropriate page
-        if (!hasAccess) {
-          console.log('🔐 Role verification: Access denied, redirecting to player dashboard')
-          setTimeout(() => {
-            router.push('/player-dashboard')
-          }, 2000) // Show access denied message for 2 seconds first
-        }
-      } catch (error) {
-        console.error('🔐 Role verification: Error during verification:', error)
-        setRoleVerification({
-          isVerifying: false,
-          hasAccess: false,
-          verificationError: error instanceof Error ? error.message : 'Verification failed'
-        })
-        
-        // On verification error, deny access for security
-        setTimeout(() => {
-          router.push('/player-dashboard')
-        }, 2000)
-      }
-    }
-
-    verifyOrganizerRole()
-  }, [user?.id, loading, userProfile, router])
+  }, [user?.id, loading, userProfile?.role, loadDashboardData])
 
   // Show loading state while checking authentication
   if (loading) {
@@ -272,8 +198,8 @@ export default function OrganizerDashboard() {
     return null
   }
 
-  // Show loading if user exists but role verification is in progress
-  if (user && (roleVerification.isVerifying || !userProfile)) {
+  // Show loading if user exists but profile not loaded yet
+  if (user && !userProfile) {
     return (
       <div className="min-h-screen flex items-center justify-center relative overflow-hidden" style={{
         background: 'linear-gradient(to bottom right, rgba(124, 58, 237, 0.03), #ffffff, rgba(34, 197, 94, 0.03))'
@@ -301,7 +227,7 @@ export default function OrganizerDashboard() {
                 Loading Profile
               </h3>
               <p className="text-sm font-medium" style={{ color: '#6b7280' }}>
-                {roleVerification.isVerifying ? 'Verifying permissions...' : 'Setting up your account...'}
+                Loading your profile...
               </p>
             </div>
           </div>
@@ -310,55 +236,6 @@ export default function OrganizerDashboard() {
     )
   }
 
-  // Check secure role verification - show access denied if verification completed and access denied
-  if (userProfile && !roleVerification.isVerifying && roleVerification.hasAccess === false) {
-    return (
-      <div className="min-h-screen flex items-center justify-center relative overflow-hidden" style={{
-        background: 'linear-gradient(to bottom right, rgba(239, 68, 68, 0.03), #ffffff, rgba(245, 158, 11, 0.03))'
-      }}>
-        {/* Premium Error Background */}
-        <div className="absolute inset-0" style={{
-          background: 'linear-gradient(to bottom right, rgba(239, 68, 68, 0.05), transparent, rgba(245, 158, 11, 0.05))'
-        }}></div>
-        <div className="absolute top-0 left-0 w-96 h-96 rounded-full blur-3xl -translate-x-48 -translate-y-48" style={{
-          background: 'linear-gradient(to bottom right, rgba(239, 68, 68, 0.1), transparent)'
-        }}></div>
-        <div className="absolute bottom-0 right-0 w-80 h-80 rounded-full blur-3xl translate-x-40 translate-y-40" style={{
-          background: 'linear-gradient(to top left, rgba(245, 158, 11, 0.1), transparent)'
-        }}></div>
-        
-        <div className="relative z-10 text-center space-y-6 max-w-md mx-auto p-6">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl backdrop-blur-md shadow-2xl mb-6" style={{
-            background: 'linear-gradient(to bottom right, rgba(239, 68, 68, 0.2), rgba(245, 158, 11, 0.2))',
-            border: '1px solid rgba(255, 255, 255, 0.3)'
-          }}>
-            <span className="text-4xl filter drop-shadow-lg">🚫</span>
-          </div>
-          <div className="space-y-4">
-            <h2 className="text-xl font-bold" style={{
-              background: 'linear-gradient(to right, #ef4444, #f59e0b)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text'
-            }}>
-              Access Denied
-            </h2>
-            <p className="text-sm font-medium" style={{ color: '#6b7280' }}>
-              Only verified organizers can access the dashboard.
-            </p>
-            <div className="space-y-2 text-xs" style={{ color: '#9ca3af' }}>
-              <p>Current role: {userProfile?.role || 'not set'}</p>
-              <p>User ID: {user?.id?.slice(0, 8)}...</p>
-              {roleVerification.verificationError && (
-                <p>Verification error: {roleVerification.verificationError}</p>
-              )}
-              <p>Redirecting to player dashboard...</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   // Convert dashboard data to component formats
   const convertToFinancialSummary = (data: DashboardFinancialSummary | null): FinancialSummary => {
