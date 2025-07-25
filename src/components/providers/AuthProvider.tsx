@@ -61,17 +61,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             await fetchUserProfile(session.user.id)
           } catch (error) {
             console.error('🔐 AuthProvider: Error fetching profile on initial load:', error)
-            // Default to player role for security - only organizers get dashboard access
-            setRole('player')
-            setUserProfile({
-              id: session.user.id,
-              phone_number: session.user.phone || '',
-              name: null,
-              role: 'player' as 'player',
-              is_active: true,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            })
+            // Provide immediate fallback profile
+            await provideFallbackProfile(session.user.id)
           }
           
           setLoading(false)
@@ -95,16 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 await fetchUserProfile(session.user.id)
               } catch (profileError) {
                 console.error('🔐 AuthProvider: Error fetching profile on fallback:', profileError)
-                setRole('player')
-                setUserProfile({
-                  id: session.user.id,
-                  phone_number: session.user.phone || '',
-                  name: null,
-                  role: 'player',
-                  is_active: true,
-                  created_at: new Date().toISOString(),
-                  updated_at: new Date().toISOString(),
-                })
+                await provideFallbackProfile(session.user.id)
               }
             }
           } catch (fallbackError) {
@@ -158,17 +140,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               message: error instanceof Error ? error.message : 'Unknown error',
               stack: error instanceof Error ? error.stack : undefined
             })
-            // Default to player role for security - only organizers get dashboard access
-            setRole('player')
-            setUserProfile({
-              id: session.user.id,
-              phone_number: session.user.phone || '',
-              name: null,
-              role: 'player' as 'player',
-              is_active: true,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            })
+            // Provide immediate fallback profile
+            await provideFallbackProfile(session.user.id)
           }
           setLoading(false)
         } else {
@@ -189,6 +162,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchUserProfile = async (userId: string) => {
     console.log('👤 Fetching user profile for:', userId)
+    
+    // Compare with current auth user
+    const { data: { user: currentAuthUser } } = await supabase.auth.getUser()
+    console.log('👤 Auth user comparison:', {
+      searchingFor: userId,
+      currentAuthUser: currentAuthUser?.id,
+      idsMatch: currentAuthUser?.id === userId,
+      currentAuthPhone: currentAuthUser?.phone
+    })
     
     try {
       // First, test basic Supabase connectivity
@@ -221,6 +203,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           // Query real user profile from database with longer timeout
           console.log('👤 Executing query: SELECT * FROM users WHERE id =', userId)
+          console.log('👤 Raw query params:', { userId, userIdType: typeof userId, userIdLength: userId.length })
+          
           const { data: userProfile, error } = await supabase
             .from('users')
             .select('*')
@@ -235,8 +219,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             hasData: !!userProfile,
             errorCode: error?.code,
             errorMessage: error?.message,
-            errorDetails: error?.details 
+            errorDetails: error?.details,
+            errorHint: error?.hint
           })
+
+          // Additional debugging - try a count query to see if user exists
+          if (!userProfile && !error) {
+            console.log('👤 No data returned, testing if user exists...')
+            const { count, error: countError } = await supabase
+              .from('users')
+              .select('*', { count: 'exact', head: true })
+              .eq('id', userId)
+            
+            console.log('👤 User existence check:', { count, countError })
+          }
           
           if (userProfile) {
             console.log('👤 Found existing user profile:', userProfile)
@@ -246,18 +242,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             return
           }
           
-          // No profile found, create one
-          if (error?.code === 'PGRST116') {
-            console.log('👤 No profile found (PGRST116), creating new user profile')
-            await createUserProfile(userId)
-            return
-          }
-          
-          // Also try to create profile if we get no data and no specific error
-          if (!userProfile && !error) {
-            console.log('👤 No profile data returned, creating new user profile')
-            await createUserProfile(userId)
-            return
+          // Handle no profile found cases
+          if (error?.code === 'PGRST116' || (!userProfile && !error)) {
+            const reason = error?.code === 'PGRST116' ? 'PGRST116 - No rows returned' : 'No data and no error'
+            console.log(`👤 ${reason}, trying alternative lookup methods`)
+            
+            // First, try to find user by phone number as a fallback
+            try {
+              const { data: { user: authUser } } = await supabase.auth.getUser()
+              if (authUser?.phone) {
+                console.log('👤 Trying to find user by phone:', authUser.phone)
+                const { data: userByPhone, error: phoneError } = await supabase
+                  .from('users')
+                  .select('*')
+                  .eq('phone_number', authUser.phone)
+                  .single()
+                
+                console.log('👤 User lookup by phone result:', { userByPhone, phoneError })
+                
+                if (userByPhone) {
+                  console.log('👤 Found user by phone! Setting profile:', userByPhone)
+                  setUserProfile(userByPhone)
+                  setRole(userByPhone.role)
+                  return
+                }
+              }
+            } catch (phoneError) {
+              console.log('👤 Phone lookup failed:', phoneError)
+            }
+            
+            // If phone lookup also fails, try creating new profile
+            console.log(`👤 No existing user found, creating new user profile`)
+            try {
+              await createUserProfile(userId)
+              return // Successfully created profile
+            } catch (createError) {
+              console.error('❌ Failed to create user profile:', createError)
+              // Continue with retry logic or fallback
+            }
           }
           
           // Store error for potential retry
@@ -295,8 +317,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       // Try to create profile anyway
       console.log('👤 Attempting to create user profile due to persistent errors')
-      await createUserProfile(userId)
-      return
+      try {
+        await createUserProfile(userId)
+        return
+      } catch (createError) {
+        console.error('❌ Profile creation also failed, using immediate fallback')
+        // Force immediate fallback if everything fails
+        await provideFallbackProfile(userId)
+        return
+      }
       
     } catch (error) {
       console.error('❌ Error in fetchUserProfile:', {
@@ -308,19 +337,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
       
       // Always provide a fallback profile with player role for security
-      const fallbackProfile = {
-        id: userId,
-        phone_number: user?.phone || '',
-        name: null,
-        role: 'player' as 'player',
-        is_active: true,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }
-      setUserProfile(fallbackProfile)
-      setRole('player')
-      console.log('👤 Using fallback profile due to error')
+      await provideFallbackProfile(userId)
     }
+  }
+
+  const provideFallbackProfile = async (userId: string) => {
+    console.log('🔄 Providing immediate fallback profile for user:', userId)
+    
+    // Get phone from current auth session
+    const { data: { user: authUser } } = await supabase.auth.getUser()
+    
+    const fallbackProfile = {
+      id: userId,
+      phone_number: authUser?.phone || user?.phone || '',
+      name: null,
+      role: 'player' as 'player',
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+    
+    setUserProfile(fallbackProfile)
+    setRole('player')
+    console.log('✅ Immediate fallback profile set:', fallbackProfile)
   }
 
   const createUserProfile = async (userId: string) => {

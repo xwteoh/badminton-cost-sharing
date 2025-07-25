@@ -172,8 +172,12 @@ export default function OrganizerDashboard() {
   // Secure role verification - verify organizer access from database
   useEffect(() => {
     const verifyOrganizerRole = async () => {
-      if (!user?.id || loading) {
-        console.log('🔐 Role verification: Waiting for auth completion')
+      if (!user?.id || loading || !userProfile) {
+        console.log('🔐 Role verification: Waiting for auth and profile completion', {
+          hasUser: !!user?.id,
+          loading,
+          hasProfile: !!userProfile
+        })
         return
       }
 
@@ -213,7 +217,7 @@ export default function OrganizerDashboard() {
     }
 
     verifyOrganizerRole()
-  }, [user?.id, loading, router])
+  }, [user?.id, loading, userProfile, router])
 
   // Show loading state while checking authentication
   if (loading) {

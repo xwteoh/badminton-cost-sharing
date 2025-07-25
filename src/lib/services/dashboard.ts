@@ -52,7 +52,8 @@ export class DashboardService {
       const { data: { user } } = await this.supabase.auth.getUser()
       console.log('📊 DashboardService: Current authenticated user:', { 
         id: user?.id, 
-        phone: user?.phone 
+        phone: user?.phone,
+        idMatches: user?.id === organizerId
       })
       
       // Check user role in database
