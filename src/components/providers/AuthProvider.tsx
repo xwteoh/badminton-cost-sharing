@@ -11,6 +11,7 @@ interface AuthContextType {
   userProfile: User | null
   role: UserRole | null
   loading: boolean
+  isSigningOut: boolean
   signInWithPhone: (phone: string) => Promise<{ error: any }>
   verifyOtp: (phone: string, token: string) => Promise<{ error: any }>
   signOut: () => Promise<void>
@@ -23,6 +24,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [userProfile, setUserProfile] = useState<User | null>(null)
   const [role, setRole] = useState<UserRole | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isSigningOut, setIsSigningOut] = useState(false)
   
   const supabase = createClientSupabaseClient()
 
@@ -63,6 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(null)
           setUserProfile(null)
           setRole(null)
+          setIsSigningOut(false) // Reset signing out state
           return
         }
 
@@ -311,10 +314,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log('🔓 AuthProvider: Starting sign out process')
       
-      // Clear state immediately for better UX
-      setUser(null)
-      setUserProfile(null)
-      setRole(null)
+      // Set signing out state to prevent redirects during logout
+      setIsSigningOut(true)
       
       // Try Supabase client first, then HTTP fallback
       try {
@@ -353,14 +354,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         } catch (httpError) {
           console.log('❌ AuthProvider: HTTP sign out also failed:', httpError)
-          // Don't throw error - state is already cleared, user can proceed
+          // Don't throw error - continue with manual state clearing
         }
       }
+
+      // Manually clear state after logout attempts
+      console.log('🔄 AuthProvider: Manually clearing authentication state')
+      setUser(null)
+      setUserProfile(null)
+      setRole(null)
+      setIsSigningOut(false)
       
       console.log('✅ AuthProvider: Sign out process completed')
     } catch (error) {
       console.error('❌ AuthProvider: Sign out error:', error)
-      // Don't throw error - state is already cleared for better UX
+      // Always clear state even if logout fails
+      setUser(null)
+      setUserProfile(null)
+      setRole(null)
+      setIsSigningOut(false)
     }
   }
 
@@ -369,6 +381,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     userProfile,
     role,
     loading,
+    isSigningOut,
     signInWithPhone,
     verifyOtp,
     signOut,

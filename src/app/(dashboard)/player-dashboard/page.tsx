@@ -416,10 +416,16 @@ export default function PlayerDashboardPage() {
                     variant="outline"
                     onClick={async () => {
                       try {
+                        console.log('🔓 Player Dashboard: Starting logout process')
                         await signOut()
-                        window.location.href = '/login'
+                        console.log('🔓 Player Dashboard: Logout completed, redirecting to login')
+                        // Small delay to ensure state is fully cleared
+                        setTimeout(() => {
+                          window.location.href = '/login'
+                        }, 100)
                       } catch (error) {
                         console.error('Sign out error:', error)
+                        // Still redirect even if logout fails
                         window.location.href = '/login'
                       }
                     }}

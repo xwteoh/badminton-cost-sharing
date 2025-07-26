@@ -11,10 +11,10 @@ interface RoleGuardProps {
 }
 
 export function RoleGuard({ children, allowedRoles, redirectTo }: RoleGuardProps) {
-  const { user, userProfile, role, loading } = useAuth()
+  const { user, userProfile, role, loading, isSigningOut } = useAuth()
 
   useEffect(() => {
-    if (loading) return
+    if (loading || isSigningOut) return
 
     // If not authenticated, redirect to login
     if (!user) {
@@ -33,10 +33,10 @@ export function RoleGuard({ children, allowedRoles, redirectTo }: RoleGuardProps
       }
       return
     }
-  }, [user, role, loading, allowedRoles, redirectTo])
+  }, [user, role, loading, isSigningOut, allowedRoles, redirectTo])
 
-  // Show loading while checking auth OR while waiting for role to load
-  if (loading || !user || (user && !role)) {
+  // Show loading while checking auth OR while waiting for role to load OR during sign out
+  if (loading || isSigningOut || !user || (user && !role)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center space-y-4">
