@@ -116,7 +116,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('🧪 AuthProvider: Starting sequential query debugging...')
       
       // Helper function for detailed timing
-      const testQuery = async (testName: string, queryPromise: Promise<any>, timeoutMs: number = 5000) => {
+      const testQuery = async (testName: string, queryPromise: Promise<any> | PromiseLike<any>, timeoutMs: number = 5000) => {
         const startTime = performance.now()
         console.log(`🧪 Test ${testName}: Starting...`)
         
@@ -149,28 +149,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Test 1: Minimal connectivity test
       const test1 = await testQuery(
         'Minimal-Connection', 
-        supabase.from('users').select('id').limit(1),
+        supabase.from('users').select('id').limit(1).then(result => result),
         3000
       )
 
       // Test 2: Count query (no data transfer)  
       const test2 = await testQuery(
         'Count-Query',
-        supabase.from('users').select('*', { count: 'exact' }).limit(0),
+        supabase.from('users').select('*', { count: 'exact' }).limit(0).then(result => result),
         3000
       )
 
       // Test 3: Your specific user query
       const test3 = await testQuery(
         'Specific-User-Query',
-        supabase.from('users').select('*').eq('id', userId).maybeSingle(),
+        supabase.from('users').select('*').eq('id', userId).maybeSingle().then(result => result),
         5000
       )
 
       // Test 4: Different table test (if players table exists)
       const test4 = await testQuery(
         'Different-Table',
-        supabase.from('players').select('id').limit(1),
+        supabase.from('players').select('id').limit(1).then(result => result),
         3000
       )
 
@@ -179,8 +179,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const freshClient = createClientSupabaseClient()
       const test5 = await testQuery(
         'Fresh-Client',
-        freshClient.from('users').select('id, role, name').eq('id', userId).maybeSingle(),
+        freshClient.from('users').select('id, role, name').eq('id', userId).maybeSingle().then(result => result),
         5000
+      )
+
+      // Test 6: Direct HTTP fetch test (to isolate browser-specific network issues)
+      const test6 = await testQuery(
+        'Direct-HTTP-Fetch',
+        fetch(`https://krackqotjvlhcagfwxft.supabase.co/rest/v1/users?select=id&limit=1`, {
+          headers: {
+            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtyYWNrcW90anZsaGNhZ2Z3eGZ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIzODY1NTksImV4cCI6MjA2Nzk2MjU1OX0.h3cSprGtnPEP7OxuLKBD_QyHeD0l1PZRfGZchpPR74k',
+            'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtyYWNrcW90anZsaGNhZ2Z3eGZ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIzODY1NTksImV4cCI6MjA2Nzk2MjU1OX0.h3cSprGtnPEP7OxuLKBD_QyHeD0l1PZRfGZchpPR74k`,
+            'Content-Type': 'application/json'
+          }
+        }).then(response => response.json()),
+        3000
+      )
+
+      // Test 7: DNS resolution test
+      const test7 = await testQuery(
+        'DNS-Resolution',
+        fetch('https://krackqotjvlhcagfwxft.supabase.co/', { 
+          method: 'HEAD',
+          mode: 'no-cors' 
+        }).then(response => ({ status: response.status, type: response.type })),
+        2000
       )
 
       console.log('📊 AuthProvider: Test Results Summary:', {
@@ -188,7 +211,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         'Count-Query': test2.success ? `✅ ${test2.duration}ms` : `❌ ${test2.duration}ms`, 
         'Specific-User-Query': test3.success ? `✅ ${test3.duration}ms` : `❌ ${test3.duration}ms`,
         'Different-Table': test4.success ? `✅ ${test4.duration}ms` : `❌ ${test4.duration}ms`,
-        'Fresh-Client': test5.success ? `✅ ${test5.duration}ms` : `❌ ${test5.duration}ms`
+        'Fresh-Client': test5.success ? `✅ ${test5.duration}ms` : `❌ ${test5.duration}ms`,
+        'Direct-HTTP-Fetch': test6.success ? `✅ ${test6.duration}ms` : `❌ ${test6.duration}ms`,
+        'DNS-Resolution': test7.success ? `✅ ${test7.duration}ms` : `❌ ${test7.duration}ms`
+      })
+
+      console.log('🔍 AuthProvider: Browser-specific analysis:', {
+        isChrome,
+        isNetlify,
+        supabaseClientTimeout: test1.duration,
+        directHttpTimeout: test6.duration,
+        dnsResolutionTimeout: test7.duration,
+        possibleCause: test6.success && !test1.success ? 'Supabase JS Client Issue' :
+                      test7.success && !test6.success ? 'API Authentication Issue' :
+                      !test7.success ? 'DNS/Network Routing Issue' : 'Unknown'
       })
 
       // Use successful result if any test succeeded
