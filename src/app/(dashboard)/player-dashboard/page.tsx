@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 import { useAuth } from '@/components/providers/AuthProvider'
+import { usePageVisibility } from '@/hooks/usePageVisibility'
+import { useNetworkRequest } from '@/hooks/useNetworkRequest'
 import { Button } from '@/components/ui/Button'
 import { MoneyDisplay } from '@/components/ui/MoneyDisplay'
 import { money } from '@/lib/calculations/money'
@@ -35,6 +37,9 @@ interface PlayerPayment {
 export default function PlayerDashboardPage() {
   const { user, userProfile, loading, signOut } = useAuth()
   const router = useRouter()
+  const { isVisible, wasHidden, resetHiddenFlag, justBecameVisible } = usePageVisibility()
+  const playerRecordRequest = useNetworkRequest<any>()
+  const playerDataRequest = useNetworkRequest<any>()
   
   // State variables
   const [viewingPlayerId, setViewingPlayerId] = useState<string | null>(null)
@@ -42,7 +47,6 @@ export default function PlayerDashboardPage() {
   const [organizerId, setOrganizerId] = useState<string | null>(null)
   const [isOrganizerView, setIsOrganizerView] = useState(false)
   const [activeTab, setActiveTab] = useState<'sessions' | 'payments'>('sessions')
-  const [dataLoading, setDataLoading] = useState(true)
   const [playerBalance, setPlayerBalance] = useState(0)
   const [totalSessions, setTotalSessions] = useState(0)
   const [totalPaid, setTotalPaid] = useState(0)
@@ -50,7 +54,10 @@ export default function PlayerDashboardPage() {
   const [sessions, setSessions] = useState<any[]>([])
   const [payments, setPayments] = useState<any[]>([])
   const [upcomingSessions, setUpcomingSessions] = useState<any[]>([])
-  const [error, setError] = useState<string | null>(null)
+  
+  // Computed loading states
+  const dataLoading = playerRecordRequest.loading || playerDataRequest.loading
+  const error = playerRecordRequest.error || playerDataRequest.error
 
   // Check if organizer is viewing another player's dashboard
   useEffect(() => {
@@ -76,10 +83,7 @@ export default function PlayerDashboardPage() {
     
     console.log('🔍 Finding player record for phone:', userProfile.phone_number)
     
-    try {
-      setDataLoading(true)
-      setError(null)
-      
+    const result = await playerRecordRequest.executeRequest(async () => {
       const { createClientSupabaseClient } = await import('@/lib/supabase/client')
       const supabase = createClientSupabaseClient()
       
@@ -88,123 +92,145 @@ export default function PlayerDashboardPage() {
       
       if (error) {
         console.log('❌ Database function error:', error)
-        setError(`Database error: ${error.message}`)
-        setDataLoading(false)
-        return
+        throw new Error(`Database error: ${error.message}`)
       }
       
       if (playerData && playerData.length > 0) {
         const player = playerData[0]
         console.log('✅ Found player record:', player)
-        setViewingPlayerId(player.player_id)
-        setViewingPlayerName(player.player_name)
-        setOrganizerId(player.organizer_id)
-        setIsOrganizerView(false)
+        return player
       } else {
         console.log('❌ No player record found')
-        setError('Player record not found. Please contact your organizer.')
-        setDataLoading(false)
+        throw new Error('Player record not found. Please contact your organizer.')
       }
-    } catch (err) {
-      console.error('Error finding player record:', err)
-      setError('Failed to load player data.')
-      setDataLoading(false)
+    }, {
+      timeout: 10000, // 10 seconds for database function calls
+      maxRetries: 2,
+      retryDelay: 2000
+    })
+
+    if (result) {
+      setViewingPlayerId(result.player_id)
+      setViewingPlayerName(result.player_name)
+      setOrganizerId(result.organizer_id)
+      setIsOrganizerView(false)
+    }
+  }
+
+  // Function to load all player data
+  const loadPlayerData = async () => {
+    if (!viewingPlayerId || !organizerId) return
+    
+    console.log('📊 Loading player data for player ID:', viewingPlayerId)
+    console.log('📊 Loading player data for organizer ID:', organizerId)
+    
+    const result = await playerDataRequest.executeRequest(async () => {
+      // Load player balance using the organizer ID
+      const balance = await balanceService.getPlayerBalance(organizerId, viewingPlayerId)
+      console.log('💰 Player balance:', balance)
+      
+      // Load additional data using direct database query
+      const { createClientSupabaseClient } = await import('@/lib/supabase/client')
+      const supabase = createClientSupabaseClient()
+      
+      // Get completed sessions for this player (filtered by organizer)
+      console.log('🔍 Querying sessions for player:', viewingPlayerId, 'organizer:', organizerId)
+      const { data: sessionData, error: sessionError } = await supabase
+        .from('session_participants')
+        .select(`
+          *,
+          session:sessions!inner(*)
+        `)
+        .eq('player_id', viewingPlayerId)
+        .eq('session.status', 'completed')
+        .eq('session.organizer_id', organizerId)
+        .order('created_at', { ascending: false })
+      
+      if (sessionError) {
+        console.error('❌ Error loading player sessions:', sessionError)
+        throw new Error(`Failed to load sessions: ${sessionError.message}`)
+      }
+      
+      // Load player payments (filtered by organizer)
+      const { data: paymentData, error: paymentError } = await supabase
+        .from('payments')
+        .select('*')
+        .eq('player_id', viewingPlayerId)
+        .eq('organizer_id', organizerId)
+        .order('payment_date', { ascending: false })
+      
+      if (paymentError) {
+        console.error('❌ Error loading player payments:', paymentError)
+        throw new Error(`Failed to load payments: ${paymentError.message}`)
+      }
+      
+      // Load upcoming sessions
+      const { data: upcomingData, error: upcomingError } = await supabase
+        .from('sessions')
+        .select('*')
+        .eq('organizer_id', organizerId)
+        .eq('status', 'planned')
+        .gte('session_date', new Date().toISOString().split('T')[0])
+        .order('session_date', { ascending: true })
+      
+      if (upcomingError) {
+        console.error('❌ Error loading upcoming sessions:', upcomingError)
+        throw new Error(`Failed to load upcoming sessions: ${upcomingError.message}`)
+      }
+      
+      return {
+        balance,
+        sessions: sessionData || [],
+        payments: paymentData || [],
+        upcomingSessions: upcomingData || []
+      }
+    }, {
+      timeout: 12000, // 12 seconds for multiple database queries
+      maxRetries: 2,
+      retryDelay: 3000
+    })
+
+    if (result) {
+      // Update all the state from the successful result
+      setPlayerBalance(result.balance.current_balance || 0)
+      setTotalPaid(result.balance.total_paid || 0)
+      setTotalOwed(result.balance.total_owed || 0)
+      setSessions(result.sessions)
+      setTotalSessions(result.sessions.length)
+      setPayments(result.payments)
+      setUpcomingSessions(result.upcomingSessions)
+      
+      // Get player name from balance data
+      if (result.balance.player?.name) {
+        setViewingPlayerName(result.balance.player.name)
+      }
+      
+      console.log('✅ Player data loaded successfully')
     }
   }
 
   // Load player data when viewingPlayerId is set
   useEffect(() => {
-    const loadPlayerData = async () => {
-      if (!viewingPlayerId || !organizerId) return
-      
-      try {
-        console.log('📊 Loading player data for player ID:', viewingPlayerId)
-        console.log('📊 Loading player data for organizer ID:', organizerId)
-        setDataLoading(true)
-        setError(null)
-        
-        // Load player balance using the organizer ID
-        const balance = await balanceService.getPlayerBalance(organizerId, viewingPlayerId)
-        console.log('💰 Player balance:', balance)
-        setPlayerBalance(balance.current_balance || 0)
-        setTotalPaid(balance.total_paid || 0)
-        setTotalOwed(balance.total_owed || 0)
-        
-        // Get player name from balance data
-        if (balance.player?.name) {
-          setViewingPlayerName(balance.player.name)
-        }
-        
-        // Load player sessions using direct database query
-        const { createClientSupabaseClient } = await import('@/lib/supabase/client')
-        const supabase = createClientSupabaseClient()
-        
-        // Get completed sessions for this player (filtered by organizer)
-        console.log('🔍 Querying sessions for player:', viewingPlayerId, 'organizer:', organizerId)
-        const { data: sessionData, error: sessionError } = await supabase
-          .from('session_participants')
-          .select(`
-            *,
-            session:sessions!inner(*)
-          `)
-          .eq('player_id', viewingPlayerId)
-          .eq('session.status', 'completed')
-          .eq('session.organizer_id', organizerId)
-          .order('created_at', { ascending: false })
-        
-        console.log('🏸 Session query result:', { sessionData, sessionError, count: sessionData?.length })
-        
-        if (sessionError) {
-          console.error('❌ Error loading player sessions:', sessionError)
-        } else {
-          console.log('🏸 Player sessions:', sessionData)
-          setSessions(sessionData || [])
-          setTotalSessions(sessionData?.length || 0)
-        }
-        
-        // Load player payments (filtered by organizer)
-        const { data: paymentData, error: paymentError } = await supabase
-          .from('payments')
-          .select('*')
-          .eq('player_id', viewingPlayerId)
-          .eq('organizer_id', organizerId)
-          .order('payment_date', { ascending: false })
-        
-        if (paymentError) {
-          console.error('❌ Error loading player payments:', paymentError)
-        } else {
-          console.log('💳 Player payments:', paymentData)
-          setPayments(paymentData || [])
-        }
-        
-        // Load upcoming sessions
-        const { data: upcomingData, error: upcomingError } = await supabase
-          .from('sessions')
-          .select('*')
-          .eq('organizer_id', organizerId)
-          .eq('status', 'planned')
-          .gte('session_date', new Date().toISOString().split('T')[0])
-          .order('session_date', { ascending: true })
-        
-        if (upcomingError) {
-          console.error('❌ Error loading upcoming sessions:', upcomingError)
-        } else {
-          console.log('📅 Upcoming sessions:', upcomingData)
-          setUpcomingSessions(upcomingData || [])
-        }
-        
-        console.log('✅ Player data loaded successfully')
-        
-      } catch (err: any) {
-        console.error('❌ Error loading player data:', err)
-        setError(err.message || 'Failed to load player data')
-      } finally {
-        setDataLoading(false)
-      }
+    if (viewingPlayerId && organizerId) {
+      loadPlayerData()
     }
-    
-    loadPlayerData()
   }, [viewingPlayerId, organizerId])
+
+  // Handle page visibility changes - retry loading when user returns to tab
+  useEffect(() => {
+    if (justBecameVisible && viewingPlayerId && organizerId) {
+      console.log('📱 User returned to tab - reloading data if needed')
+      
+      // Only reload if we have an error or if data was loading when tab was hidden
+      if (error || (wasHidden && !playerDataRequest.data)) {
+        console.log('🔄 Retrying data load after returning to tab')
+        loadPlayerData()
+      }
+      
+      // Reset the hidden flag after handling
+      resetHiddenFlag()
+    }
+  }, [justBecameVisible, viewingPlayerId, organizerId, error, wasHidden])
 
   // Check authentication and role - also show loading during data fetch
   if (loading || (userProfile && dataLoading)) {
@@ -222,33 +248,78 @@ export default function PlayerDashboardPage() {
           background: 'linear-gradient(to top left, rgba(34, 197, 94, 0.1), transparent)'
         }}></div>
         
-        <div className="relative z-10 text-center space-y-6">
+        <div className="relative z-10 text-center space-y-6 max-w-md mx-auto p-6">
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl backdrop-blur-md shadow-2xl mb-6" style={{
             background: 'linear-gradient(to bottom right, rgba(124, 58, 237, 0.2), rgba(34, 197, 94, 0.2))',
             border: '1px solid rgba(255, 255, 255, 0.3)'
           }}>
-            <span className="text-4xl filter drop-shadow-lg">👤</span>
+            <span className="text-4xl filter drop-shadow-lg">
+              {error ? '⚠️' : '👤'}
+            </span>
           </div>
+          
           <div className="space-y-4">
+            {/* Loading spinner or error state */}
             <div className="relative">
-              <div className="w-12 h-12 mx-auto">
-                <div className="animate-spin rounded-full h-12 w-12 border-4 border-purple-200" style={{
-                  borderTopColor: '#7c3aed'
-                }}></div>
-              </div>
+              {!error && (
+                <div className="w-12 h-12 mx-auto">
+                  <div className="animate-spin rounded-full h-12 w-12 border-4 border-purple-200" style={{
+                    borderTopColor: '#7c3aed'
+                  }}></div>
+                </div>
+              )}
             </div>
+            
             <div className="space-y-2">
               <h3 className="text-xl font-bold" style={{
-                background: 'linear-gradient(to right, #7c3aed, #22c55e)',
+                background: error 
+                  ? 'linear-gradient(to right, #ef4444, #f59e0b)' 
+                  : 'linear-gradient(to right, #7c3aed, #22c55e)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
                 backgroundClip: 'text'
               }}>
-                Loading Player Dashboard
+                {error ? 'Connection Issue' : 'Loading Player Dashboard'}
               </h3>
+              
               <p className="text-sm font-medium" style={{ color: '#6b7280' }}>
-                {dataLoading ? 'Loading player data...' : 'Preparing your badminton data...'}
+                {error ? (
+                  <>
+                    {playerRecordRequest.isRetrying || playerDataRequest.isRetrying 
+                      ? `Retrying... (${Math.max(playerRecordRequest.retryCount, playerDataRequest.retryCount)}/${3})`
+                      : 'Having trouble loading your data'
+                    }
+                  </>
+                ) : (
+                  dataLoading ? 'Loading player data...' : 'Preparing your badminton data...'
+                )}
               </p>
+              
+              {/* Show error details and retry button */}
+              {error && !playerRecordRequest.loading && !playerDataRequest.loading && (
+                <div className="mt-4 space-y-3">
+                  <div className="text-xs text-gray-600 bg-gray-50 p-3 rounded-lg">
+                    {error}
+                  </div>
+                  <Button 
+                    onClick={() => {
+                      if (viewingPlayerId && organizerId) {
+                        loadPlayerData()
+                      } else if (userProfile?.role === 'player') {
+                        findPlayerRecord()
+                      }
+                    }}
+                    className="w-full font-medium"
+                    style={{
+                      background: 'linear-gradient(to right, rgba(124, 58, 237, 0.1), rgba(34, 197, 94, 0.1))',
+                      color: '#7c3aed',
+                      border: '1px solid rgba(124, 58, 237, 0.2)'
+                    }}
+                  >
+                    Try Again
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -412,33 +483,60 @@ export default function PlayerDashboardPage() {
                     Back to Players
                   </Button>
                 ) : (
-                  <Button 
-                    variant="outline"
-                    onClick={async () => {
-                      try {
-                        console.log('🔓 Player Dashboard: Starting logout process')
-                        await signOut()
-                        console.log('🔓 Player Dashboard: Logout completed, redirecting to login')
-                        // Small delay to ensure state is fully cleared
-                        setTimeout(() => {
+                  <>
+                    {/* Refresh button */}
+                    <Button 
+                      variant="outline"
+                      onClick={() => {
+                        console.log('🔄 Manual refresh triggered')
+                        if (viewingPlayerId && organizerId) {
+                          loadPlayerData()
+                        } else if (userProfile?.role === 'player') {
+                          findPlayerRecord()
+                        }
+                      }}
+                      disabled={dataLoading}
+                      className="font-bold text-base transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 backdrop-blur-sm"
+                      style={{
+                        background: 'linear-gradient(to right, rgba(34, 197, 94, 0.1), rgba(34, 197, 94, 0.05))',
+                        color: '#22c55e',
+                        borderColor: 'rgba(34, 197, 94, 0.2)',
+                        opacity: dataLoading ? 0.5 : 1
+                      }}
+                    >
+                      <span className="mr-2">{dataLoading ? '⏳' : '🔄'}</span>
+                      {dataLoading ? 'Refreshing...' : 'Refresh'}
+                    </Button>
+                    
+                    {/* Sign out button */}
+                    <Button 
+                      variant="outline"
+                      onClick={async () => {
+                        try {
+                          console.log('🔓 Player Dashboard: Starting logout process')
+                          await signOut()
+                          console.log('🔓 Player Dashboard: Logout completed, redirecting to login')
+                          // Small delay to ensure state is fully cleared
+                          setTimeout(() => {
+                            window.location.href = '/login'
+                          }, 100)
+                        } catch (error) {
+                          console.error('Sign out error:', error)
+                          // Still redirect even if logout fails
                           window.location.href = '/login'
-                        }, 100)
-                      } catch (error) {
-                        console.error('Sign out error:', error)
-                        // Still redirect even if logout fails
-                        window.location.href = '/login'
-                      }
-                    }}
-                    className="font-bold text-base transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 backdrop-blur-sm"
-                    style={{
-                      background: 'linear-gradient(to right, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05))',
-                      color: '#ef4444',
-                      borderColor: 'rgba(239, 68, 68, 0.2)'
-                    }}
-                  >
-                    <span className="mr-2">👋</span>
-                    Sign out
-                  </Button>
+                        }
+                      }}
+                      className="font-bold text-base transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 backdrop-blur-sm"
+                      style={{
+                        background: 'linear-gradient(to right, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05))',
+                        color: '#ef4444',
+                        borderColor: 'rgba(239, 68, 68, 0.2)'
+                      }}
+                    >
+                      <span className="mr-2">👋</span>
+                      Sign out
+                    </Button>
+                  </>
                 )}
               </div>
             </div>
