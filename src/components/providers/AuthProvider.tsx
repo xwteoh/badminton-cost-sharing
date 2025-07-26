@@ -100,25 +100,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       console.log(`🔍 AuthProvider: Using ${timeoutDuration}ms timeout for browser compatibility`)
       
-      // Create a timeout wrapper that's browser-specific
-      const timeoutPromise = new Promise((_, reject) => {
+      // Skip connection test and go directly to profile query
+      console.log('🔍 AuthProvider: Querying for user profile directly...')
+      
+      // Create timeout for this specific query
+      const profileTimeout = new Promise((_, reject) => {
         setTimeout(() => reject(new Error(`Database query timeout after ${timeoutDuration/1000} seconds`)), timeoutDuration)
       })
-
-      // Test basic Supabase connection first with timeout
-      console.log('🔍 AuthProvider: Testing Supabase connection...')
-      const connectionTest = await Promise.race([
-        supabase.from('users').select('count', { count: 'exact' }).limit(0),
-        timeoutPromise
-      ])
       
-      console.log('🔍 AuthProvider: Connection test result:', connectionTest)
-
-      // Try to get existing user profile with timeout
-      console.log('🔍 AuthProvider: Querying for user profile...')
       const profileQuery = await Promise.race([
         supabase.from('users').select('*').eq('id', userId).maybeSingle(),
-        timeoutPromise
+        profileTimeout
       ]) as { data: any, error: any }
 
       console.log('🔍 AuthProvider: User profile query result:', { 
@@ -146,7 +138,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('❌ AuthProvider: Error loading user profile:', error)
       
       // If it's a timeout error, try multiple fallback strategies
-      if (error.message?.includes('timeout')) {
+      if (error.message?.includes('timeout') || error.message?.includes('Database query timeout')) {
         console.log('🔄 AuthProvider: Timeout detected, attempting fallback strategies')
         
         // Strategy 1: Try a simpler query with different approach
