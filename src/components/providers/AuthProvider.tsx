@@ -112,179 +112,82 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })
     
     try {
-      // Sequential Query Testing with Detailed Logging
-      console.log('🧪 AuthProvider: Starting sequential query debugging...')
+      console.log('🔧 AuthProvider: Using HTTP-first approach for reliability')
       
-      // Helper function for detailed timing
-      const testQuery = async (testName: string, queryPromise: Promise<any> | PromiseLike<any>, timeoutMs: number = 5000) => {
-        const startTime = performance.now()
-        console.log(`🧪 Test ${testName}: Starting...`)
-        
-        try {
-          const timeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => reject(new Error(`${testName} timeout after ${timeoutMs}ms`)), timeoutMs)
-          })
-          
-          const result = await Promise.race([queryPromise, timeoutPromise])
-          const endTime = performance.now()
-          const duration = Math.round(endTime - startTime)
-          
-          console.log(`✅ Test ${testName}: SUCCESS in ${duration}ms`, { result })
-          return { success: true, result, duration, error: null }
-        } catch (error: any) {
-          const endTime = performance.now()
-          const duration = Math.round(endTime - startTime)
-          
-          console.error(`❌ Test ${testName}: FAILED in ${duration}ms`, { 
-            error: error.message,
-            errorCode: error.code,
-            errorDetails: error.details,
-            errorHint: error.hint,
-            fullError: error
-          })
-          return { success: false, result: null, duration, error }
-        }
-      }
-
-      // Test 1: Minimal connectivity test
-      const test1 = await testQuery(
-        'Minimal-Connection', 
-        supabase.from('users').select('id').limit(1).then(result => result),
-        3000
-      )
-
-      // Test 2: Count query (no data transfer)  
-      const test2 = await testQuery(
-        'Count-Query',
-        supabase.from('users').select('*', { count: 'exact' }).limit(0).then(result => result),
-        3000
-      )
-
-      // Test 3: Your specific user query
-      const test3 = await testQuery(
-        'Specific-User-Query',
-        supabase.from('users').select('*').eq('id', userId).maybeSingle().then(result => result),
-        5000
-      )
-
-      // Test 4: Different table test (if players table exists)
-      const test4 = await testQuery(
-        'Different-Table',
-        supabase.from('players').select('id').limit(1).then(result => result),
-        3000
-      )
-
-      // Test 5: Fresh client test
-      console.log('🧪 Test Fresh-Client: Creating new Supabase client...')
-      const freshClient = createClientSupabaseClient()
-      const test5 = await testQuery(
-        'Fresh-Client',
-        freshClient.from('users').select('id, role, name').eq('id', userId).maybeSingle().then(result => result),
-        5000
-      )
-
-      // Test 6: Direct HTTP fetch test (to isolate browser-specific network issues)
+      // Get environment variables
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
       const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      
-      const test6 = await testQuery(
-        'Direct-HTTP-Fetch',
-        fetch(`${supabaseUrl}/rest/v1/users?select=id&limit=1`, {
+
+      console.log('🔍 AuthProvider: Strategy - HTTP Direct → Supabase Client Fallback')
+
+      // Strategy 1: Direct HTTP (Primary - Most Reliable)
+      try {
+        console.log('🚀 AuthProvider: Attempting HTTP direct query...')
+        const startTime = performance.now()
+        
+        const userResponse = await fetch(`${supabaseUrl}/rest/v1/users?id=eq.${userId}&select=*`, {
           headers: {
             'apikey': supabaseKey,
             'Authorization': `Bearer ${supabaseKey}`,
             'Content-Type': 'application/json'
           }
-        }).then(response => response.json()),
-        3000
-      )
-
-      // Test 7: DNS resolution test
-      const test7 = await testQuery(
-        'DNS-Resolution',
-        fetch(`${supabaseUrl}/`, { 
-          method: 'HEAD',
-          mode: 'no-cors' 
-        }).then(response => ({ status: response.status, type: response.type })),
-        2000
-      )
-
-      console.log('📊 AuthProvider: Test Results Summary:', {
-        'Minimal-Connection': test1.success ? `✅ ${test1.duration}ms` : `❌ ${test1.duration}ms`,
-        'Count-Query': test2.success ? `✅ ${test2.duration}ms` : `❌ ${test2.duration}ms`, 
-        'Specific-User-Query': test3.success ? `✅ ${test3.duration}ms` : `❌ ${test3.duration}ms`,
-        'Different-Table': test4.success ? `✅ ${test4.duration}ms` : `❌ ${test4.duration}ms`,
-        'Fresh-Client': test5.success ? `✅ ${test5.duration}ms` : `❌ ${test5.duration}ms`,
-        'Direct-HTTP-Fetch': test6.success ? `✅ ${test6.duration}ms` : `❌ ${test6.duration}ms`,
-        'DNS-Resolution': test7.success ? `✅ ${test7.duration}ms` : `❌ ${test7.duration}ms`
-      })
-
-      console.log('🔍 AuthProvider: Browser-specific analysis:', {
-        isChrome,
-        isNetlify,
-        supabaseClientTimeout: test1.duration,
-        directHttpTimeout: test6.duration,
-        dnsResolutionTimeout: test7.duration,
-        possibleCause: test6.success && !test1.success ? 'Supabase JS Client Issue' :
-                      test7.success && !test6.success ? 'API Authentication Issue' :
-                      !test7.success ? 'DNS/Network Routing Issue' : 'Unknown'
-      })
-
-      // Use successful result if any test succeeded
-      if (test3.success && test3.result.data) {
-        console.log('✅ AuthProvider: Using Specific-User-Query result')
-        setUserProfile(test3.result.data)
-        setRole(test3.result.data.role)
-        return
-      }
-      
-      if (test5.success && test5.result.data) {
-        console.log('✅ AuthProvider: Using Fresh-Client result')  
-        setUserProfile(test5.result.data)
-        setRole(test5.result.data.role)
-        return
-      }
-
-      // Chrome workaround: Use direct HTTP if Supabase client fails but HTTP works
-      if (test6.success && !test1.success && isChrome) {
-        console.log('🔧 AuthProvider: Using Chrome HTTP workaround - Supabase client failed but HTTP works')
+        })
         
-        try {
-          // Get environment variables securely
-          const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-          const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-          
-          // Get user profile via direct HTTP
-          const userResponse = await fetch(`${supabaseUrl}/rest/v1/users?id=eq.${userId}&select=*`, {
-            headers: {
-              'apikey': supabaseKey,
-              'Authorization': `Bearer ${supabaseKey}`,
-              'Content-Type': 'application/json'
-            }
-          })
-          
+        const endTime = performance.now()
+        const duration = Math.round(endTime - startTime)
+        
+        if (userResponse.ok) {
           const userData = await userResponse.json()
+          console.log(`✅ AuthProvider: HTTP query SUCCESS in ${duration}ms`)
           
           if (userData && userData.length > 0) {
-            console.log('✅ AuthProvider: Chrome HTTP workaround successful - found user profile')
+            console.log('✅ AuthProvider: User profile found via HTTP')
             const userProfile = userData[0]
             setUserProfile(userProfile)
             setRole(userProfile.role)
             return
           } else {
-            console.log('🔄 AuthProvider: Chrome HTTP workaround - no existing user, creating via HTTP')
-            // Create user via HTTP
+            console.log('🔄 AuthProvider: No existing user found via HTTP, creating new one...')
             await createUserProfileViaHTTP(userId)
             return
           }
-        } catch (httpError) {
-          console.error('❌ AuthProvider: Chrome HTTP workaround failed:', httpError)
+        } else {
+          console.log(`❌ AuthProvider: HTTP query failed with status ${userResponse.status} in ${duration}ms`)
         }
+      } catch (httpError: any) {
+        console.log('❌ AuthProvider: HTTP direct method failed:', httpError.message)
       }
 
-      // If no profile found, try creating one
-      console.log('🔄 AuthProvider: No existing profile found, creating new one...')
-      await createUserProfile(userId)
+      // Strategy 2: Supabase Client (Fallback)
+      console.log('🔄 AuthProvider: HTTP method failed, trying Supabase client fallback...')
+      try {
+        const startTime = performance.now()
+        
+        const { data: userData, error } = await Promise.race([
+          supabase.from('users').select('*').eq('id', userId).maybeSingle(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Supabase client timeout')), 5000))
+        ]) as { data: any, error: any }
+        
+        const endTime = performance.now()
+        const duration = Math.round(endTime - startTime)
+        
+        if (userData && !error) {
+          console.log(`✅ AuthProvider: Supabase client SUCCESS in ${duration}ms`)
+          setUserProfile(userData)
+          setRole(userData.role)
+          return
+        } else {
+          console.log(`❌ AuthProvider: Supabase client failed in ${duration}ms:`, error?.message)
+          
+          if (!userData && !error) {
+            console.log('🔄 AuthProvider: No existing user found via client, creating new one...')
+            await createUserProfile(userId)
+            return
+          }
+        }
+      } catch (clientError: any) {
+        console.log('❌ AuthProvider: Supabase client method failed:', clientError.message)
+      }
 
     } catch (error: any) {
       console.error('❌ AuthProvider: Error in sequential testing:', error)
