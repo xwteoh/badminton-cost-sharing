@@ -87,11 +87,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const loadUserProfile = async (userId: string) => {
     console.log('🔍 AuthProvider: Loading user profile for ID:', userId)
+    console.log('🔍 AuthProvider: Browser info:', {
+      userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'server',
+      isChrome: typeof window !== 'undefined' ? window.navigator.userAgent.includes('Chrome') : false,
+      isSafari: typeof window !== 'undefined' ? window.navigator.userAgent.includes('Safari') && !window.navigator.userAgent.includes('Chrome') : false
+    })
     
     try {
-      // Create a timeout wrapper for Vercel environment
+      // Use shorter timeout for Chrome due to more aggressive connection handling
+      const isChrome = typeof window !== 'undefined' && window.navigator.userAgent.includes('Chrome')
+      const timeoutDuration = isChrome ? 5000 : 7000
+      
+      console.log(`🔍 AuthProvider: Using ${timeoutDuration}ms timeout for browser compatibility`)
+      
+      // Create a timeout wrapper that's browser-specific
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Database query timeout after 10 seconds')), 10000)
+        setTimeout(() => reject(new Error(`Database query timeout after ${timeoutDuration/1000} seconds`)), timeoutDuration)
       })
 
       // Test basic Supabase connection first with timeout
@@ -134,13 +145,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error: any) {
       console.error('❌ AuthProvider: Error loading user profile:', error)
       
-      // If it's a timeout error on Vercel, try creating a fallback user profile
+      // If it's a timeout error, try multiple fallback strategies
       if (error.message?.includes('timeout')) {
-        console.log('🔄 AuthProvider: Timeout detected, attempting fallback user creation')
+        console.log('🔄 AuthProvider: Timeout detected, attempting fallback strategies')
+        
+        // Strategy 1: Try a simpler query with different approach
         try {
+          console.log('🔄 AuthProvider: Attempting simplified profile query...')
+          
+          // For Chrome compatibility, try a more direct approach
+          const { data: simpleProfile, error: simpleError } = await supabase
+            .from('users')
+            .select('id, role, name, phone_number, is_active, created_at, updated_at')
+            .eq('id', userId)
+            .maybeSingle()
+          
+          if (simpleProfile && !simpleError) {
+            console.log('✅ AuthProvider: Simple query succeeded')
+            setUserProfile(simpleProfile)
+            setRole(simpleProfile.role)
+            return
+          }
+          
+          if (simpleError) {
+            console.log('❌ AuthProvider: Simple query error:', simpleError)
+          }
+        } catch (simpleError) {
+          console.log('❌ AuthProvider: Simple query exception:', simpleError)
+        }
+        
+        // Strategy 2: Create new profile as fallback
+        try {
+          console.log('🔄 AuthProvider: Creating fallback user profile...')
           await createUserProfile(userId)
         } catch (fallbackError) {
-          console.error('❌ AuthProvider: Fallback creation also failed:', fallbackError)
+          console.error('❌ AuthProvider: All fallback strategies failed:', fallbackError)
+          // Let the error propagate - no hardcoded fallbacks for production
         }
       }
     }

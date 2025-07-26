@@ -36,10 +36,13 @@ export function createClientSupabaseClient(): ReturnType<typeof createClient<Dat
     global: {
       headers: {
         'x-client-info': 'badminton-app@1.0.0',
+        // Chrome-specific headers for better Vercel compatibility
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
       },
     },
     realtime: {
-      timeout: 10000,
+      timeout: 5000, // Shorter timeout for better Chrome compatibility on Vercel
     },
   })
   
