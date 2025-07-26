@@ -184,12 +184,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       )
 
       // Test 6: Direct HTTP fetch test (to isolate browser-specific network issues)
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      
       const test6 = await testQuery(
         'Direct-HTTP-Fetch',
-        fetch(`https://krackqotjvlhcagfwxft.supabase.co/rest/v1/users?select=id&limit=1`, {
+        fetch(`${supabaseUrl}/rest/v1/users?select=id&limit=1`, {
           headers: {
-            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtyYWNrcW90anZsaGNhZ2Z3eGZ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIzODY1NTksImV4cCI6MjA2Nzk2MjU1OX0.h3cSprGtnPEP7OxuLKBD_QyHeD0l1PZRfGZchpPR74k',
-            'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtyYWNrcW90anZsaGNhZ2Z3eGZ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIzODY1NTksImV4cCI6MjA2Nzk2MjU1OX0.h3cSprGtnPEP7OxuLKBD_QyHeD0l1PZRfGZchpPR74k`,
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
             'Content-Type': 'application/json'
           }
         }).then(response => response.json()),
@@ -199,7 +202,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Test 7: DNS resolution test
       const test7 = await testQuery(
         'DNS-Resolution',
-        fetch('https://krackqotjvlhcagfwxft.supabase.co/', { 
+        fetch(`${supabaseUrl}/`, { 
           method: 'HEAD',
           mode: 'no-cors' 
         }).then(response => ({ status: response.status, type: response.type })),
@@ -240,6 +243,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUserProfile(test5.result.data)
         setRole(test5.result.data.role)
         return
+      }
+
+      // Chrome workaround: Use direct HTTP if Supabase client fails but HTTP works
+      if (test6.success && !test1.success && isChrome) {
+        console.log('🔧 AuthProvider: Using Chrome HTTP workaround - Supabase client failed but HTTP works')
+        
+        try {
+          // Get environment variables securely
+          const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+          const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+          
+          // Get user profile via direct HTTP
+          const userResponse = await fetch(`${supabaseUrl}/rest/v1/users?id=eq.${userId}&select=*`, {
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${supabaseKey}`,
+              'Content-Type': 'application/json'
+            }
+          })
+          
+          const userData = await userResponse.json()
+          
+          if (userData && userData.length > 0) {
+            console.log('✅ AuthProvider: Chrome HTTP workaround successful - found user profile')
+            const userProfile = userData[0]
+            setUserProfile(userProfile)
+            setRole(userProfile.role)
+            return
+          } else {
+            console.log('🔄 AuthProvider: Chrome HTTP workaround - no existing user, creating via HTTP')
+            // Create user via HTTP
+            await createUserProfileViaHTTP(userId)
+            return
+          }
+        } catch (httpError) {
+          console.error('❌ AuthProvider: Chrome HTTP workaround failed:', httpError)
+        }
       }
 
       // If no profile found, try creating one
@@ -287,6 +327,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       console.error('User profile creation failed:', error)
+    }
+  }
+
+  const createUserProfileViaHTTP = async (userId: string) => {
+    try {
+      console.log('🔧 AuthProvider: Creating user profile via HTTP for Chrome')
+      
+      const { data: { user: authUser } } = await supabase.auth.getUser()
+      
+      const newUser = {
+        id: userId,
+        phone_number: authUser?.phone || '',
+        name: null,
+        role: 'player' as const,
+        is_active: true,
+      }
+
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+      const response = await fetch(`${supabaseUrl}/rest/v1/users`, {
+        method: 'POST',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(newUser)
+      })
+
+      if (response.ok) {
+        const userData = await response.json()
+        const createdUser = Array.isArray(userData) ? userData[0] : userData
+        
+        console.log('✅ AuthProvider: User profile created via HTTP')
+        setUserProfile(createdUser)
+        setRole(createdUser.role)
+      } else {
+        const errorData = await response.text()
+        console.error('❌ AuthProvider: HTTP user creation failed:', response.status, errorData)
+      }
+    } catch (error) {
+      console.error('❌ AuthProvider: HTTP user profile creation failed:', error)
     }
   }
 
