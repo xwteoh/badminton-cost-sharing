@@ -309,16 +309,58 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     try {
+      console.log('🔓 AuthProvider: Starting sign out process')
+      
+      // Clear state immediately for better UX
       setUser(null)
       setUserProfile(null)
       setRole(null)
       
-      const { error } = await supabase.auth.signOut()
-      if (error) {
-        console.error('Sign out error:', error)
+      // Try Supabase client first, then HTTP fallback
+      try {
+        console.log('🔓 AuthProvider: Attempting Supabase client sign out')
+        const { error } = await Promise.race([
+          supabase.auth.signOut(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Supabase signOut timeout')), 3000))
+        ]) as { error: any }
+        
+        if (error) {
+          console.log('❌ AuthProvider: Supabase client sign out error:', error.message)
+          throw error
+        }
+        
+        console.log('✅ AuthProvider: Supabase client sign out successful')
+      } catch (clientError: any) {
+        console.log('🔄 AuthProvider: Supabase client sign out failed, trying HTTP approach')
+        
+        // HTTP fallback - direct API call to sign out
+        try {
+          const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+          const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+          
+          const response = await fetch(`${supabaseUrl}/auth/v1/logout`, {
+            method: 'POST',
+            headers: {
+              'apikey': supabaseKey,
+              'Content-Type': 'application/json'
+            }
+          })
+          
+          if (response.ok) {
+            console.log('✅ AuthProvider: HTTP sign out successful')
+          } else {
+            console.log('❌ AuthProvider: HTTP sign out failed with status:', response.status)
+          }
+        } catch (httpError) {
+          console.log('❌ AuthProvider: HTTP sign out also failed:', httpError)
+          // Don't throw error - state is already cleared, user can proceed
+        }
       }
+      
+      console.log('✅ AuthProvider: Sign out process completed')
     } catch (error) {
-      console.error('Sign out error:', error)
+      console.error('❌ AuthProvider: Sign out error:', error)
+      // Don't throw error - state is already cleared for better UX
     }
   }
 
