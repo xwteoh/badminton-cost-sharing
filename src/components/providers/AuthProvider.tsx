@@ -87,93 +87,140 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const loadUserProfile = async (userId: string) => {
     console.log('🔍 AuthProvider: Loading user profile for ID:', userId)
-    console.log('🔍 AuthProvider: Browser info:', {
+    
+    // Detect deployment environment
+    const isVercel = typeof window !== 'undefined' && (
+      window.location.hostname.includes('vercel.app') || 
+      window.location.hostname.includes('vercel.live') ||
+      process.env.VERCEL_ENV
+    )
+    const isNetlify = typeof window !== 'undefined' && window.location.hostname.includes('netlify.app')
+    const isChrome = typeof window !== 'undefined' && window.navigator.userAgent.includes('Chrome')
+    const isLocal = typeof window !== 'undefined' && (
+      window.location.hostname === 'localhost' || 
+      window.location.hostname === '127.0.0.1'
+    )
+
+    console.log('🔍 AuthProvider: Environment info:', {
       userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'server',
-      isChrome: typeof window !== 'undefined' ? window.navigator.userAgent.includes('Chrome') : false,
-      isSafari: typeof window !== 'undefined' ? window.navigator.userAgent.includes('Safari') && !window.navigator.userAgent.includes('Chrome') : false
+      isChrome,
+      isSafari: typeof window !== 'undefined' ? window.navigator.userAgent.includes('Safari') && !window.navigator.userAgent.includes('Chrome') : false,
+      isVercel,
+      isNetlify,
+      isLocal,
+      hostname: typeof window !== 'undefined' ? window.location.hostname : 'server'
     })
     
     try {
-      // Use shorter timeout for Chrome due to more aggressive connection handling
-      const isChrome = typeof window !== 'undefined' && window.navigator.userAgent.includes('Chrome')
-      const timeoutDuration = isChrome ? 5000 : 7000
+      // Sequential Query Testing with Detailed Logging
+      console.log('🧪 AuthProvider: Starting sequential query debugging...')
       
-      console.log(`🔍 AuthProvider: Using ${timeoutDuration}ms timeout for browser compatibility`)
-      
-      // Skip connection test and go directly to profile query
-      console.log('🔍 AuthProvider: Querying for user profile directly...')
-      
-      // Create timeout for this specific query
-      const profileTimeout = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error(`Database query timeout after ${timeoutDuration/1000} seconds`)), timeoutDuration)
-      })
-      
-      const profileQuery = await Promise.race([
+      // Helper function for detailed timing
+      const testQuery = async (testName: string, queryPromise: Promise<any>, timeoutMs: number = 5000) => {
+        const startTime = performance.now()
+        console.log(`🧪 Test ${testName}: Starting...`)
+        
+        try {
+          const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error(`${testName} timeout after ${timeoutMs}ms`)), timeoutMs)
+          })
+          
+          const result = await Promise.race([queryPromise, timeoutPromise])
+          const endTime = performance.now()
+          const duration = Math.round(endTime - startTime)
+          
+          console.log(`✅ Test ${testName}: SUCCESS in ${duration}ms`, { result })
+          return { success: true, result, duration, error: null }
+        } catch (error: any) {
+          const endTime = performance.now()
+          const duration = Math.round(endTime - startTime)
+          
+          console.error(`❌ Test ${testName}: FAILED in ${duration}ms`, { 
+            error: error.message,
+            errorCode: error.code,
+            errorDetails: error.details,
+            errorHint: error.hint,
+            fullError: error
+          })
+          return { success: false, result: null, duration, error }
+        }
+      }
+
+      // Test 1: Minimal connectivity test
+      const test1 = await testQuery(
+        'Minimal-Connection', 
+        supabase.from('users').select('id').limit(1),
+        3000
+      )
+
+      // Test 2: Count query (no data transfer)  
+      const test2 = await testQuery(
+        'Count-Query',
+        supabase.from('users').select('*', { count: 'exact' }).limit(0),
+        3000
+      )
+
+      // Test 3: Your specific user query
+      const test3 = await testQuery(
+        'Specific-User-Query',
         supabase.from('users').select('*').eq('id', userId).maybeSingle(),
-        profileTimeout
-      ]) as { data: any, error: any }
+        5000
+      )
 
-      console.log('🔍 AuthProvider: User profile query result:', { 
-        existingUser: profileQuery.data, 
-        error: profileQuery.error,
-        hasUser: !!profileQuery.data,
-        userRole: profileQuery.data?.role 
+      // Test 4: Different table test (if players table exists)
+      const test4 = await testQuery(
+        'Different-Table',
+        supabase.from('players').select('id').limit(1),
+        3000
+      )
+
+      // Test 5: Fresh client test
+      console.log('🧪 Test Fresh-Client: Creating new Supabase client...')
+      const freshClient = createClientSupabaseClient()
+      const test5 = await testQuery(
+        'Fresh-Client',
+        freshClient.from('users').select('id, role, name').eq('id', userId).maybeSingle(),
+        5000
+      )
+
+      console.log('📊 AuthProvider: Test Results Summary:', {
+        'Minimal-Connection': test1.success ? `✅ ${test1.duration}ms` : `❌ ${test1.duration}ms`,
+        'Count-Query': test2.success ? `✅ ${test2.duration}ms` : `❌ ${test2.duration}ms`, 
+        'Specific-User-Query': test3.success ? `✅ ${test3.duration}ms` : `❌ ${test3.duration}ms`,
+        'Different-Table': test4.success ? `✅ ${test4.duration}ms` : `❌ ${test4.duration}ms`,
+        'Fresh-Client': test5.success ? `✅ ${test5.duration}ms` : `❌ ${test5.duration}ms`
       })
 
-      if (profileQuery.data) {
-        console.log('✅ AuthProvider: User profile found, setting state')
-        setUserProfile(profileQuery.data)
-        setRole(profileQuery.data.role)
+      // Use successful result if any test succeeded
+      if (test3.success && test3.result.data) {
+        console.log('✅ AuthProvider: Using Specific-User-Query result')
+        setUserProfile(test3.result.data)
+        setRole(test3.result.data.role)
+        return
+      }
+      
+      if (test5.success && test5.result.data) {
+        console.log('✅ AuthProvider: Using Fresh-Client result')  
+        setUserProfile(test5.result.data)
+        setRole(test5.result.data.role)
         return
       }
 
-      // If no profile exists, create one
-      if (!profileQuery.data && !profileQuery.error) {
-        console.log('🔄 AuthProvider: No profile found, creating new one')
-        await createUserProfile(userId)
-      } else if (profileQuery.error) {
-        console.error('❌ AuthProvider: Database error:', profileQuery.error)
-      }
+      // If no profile found, try creating one
+      console.log('🔄 AuthProvider: No existing profile found, creating new one...')
+      await createUserProfile(userId)
+
     } catch (error: any) {
-      console.error('❌ AuthProvider: Error loading user profile:', error)
+      console.error('❌ AuthProvider: Error in sequential testing:', error)
       
-      // If it's a timeout error, try multiple fallback strategies
-      if (error.message?.includes('timeout') || error.message?.includes('Database query timeout')) {
-        console.log('🔄 AuthProvider: Timeout detected, attempting fallback strategies')
-        
-        // Strategy 1: Try a simpler query with different approach
-        try {
-          console.log('🔄 AuthProvider: Attempting simplified profile query...')
-          
-          // For Chrome compatibility, try a more direct approach
-          const { data: simpleProfile, error: simpleError } = await supabase
-            .from('users')
-            .select('id, role, name, phone_number, is_active, created_at, updated_at')
-            .eq('id', userId)
-            .maybeSingle()
-          
-          if (simpleProfile && !simpleError) {
-            console.log('✅ AuthProvider: Simple query succeeded')
-            setUserProfile(simpleProfile)
-            setRole(simpleProfile.role)
-            return
-          }
-          
-          if (simpleError) {
-            console.log('❌ AuthProvider: Simple query error:', simpleError)
-          }
-        } catch (simpleError) {
-          console.log('❌ AuthProvider: Simple query exception:', simpleError)
-        }
-        
-        // Strategy 2: Create new profile as fallback
-        try {
-          console.log('🔄 AuthProvider: Creating fallback user profile...')
-          await createUserProfile(userId)
-        } catch (fallbackError) {
-          console.error('❌ AuthProvider: All fallback strategies failed:', fallbackError)
-          // Let the error propagate - no hardcoded fallbacks for production
-        }
+      // Final fallback: Try creating user profile
+      try {
+        console.log('🔄 AuthProvider: All tests failed, attempting user creation as final fallback...')
+        await createUserProfile(userId)
+      } catch (createError) {
+        console.error('❌ AuthProvider: User creation also failed:', createError)
+        console.log('🔄 AuthProvider: Setting loading to false to prevent infinite loading')
+        setLoading(false)
       }
     }
   }

@@ -23,6 +23,9 @@ export function createClientSupabaseClient(): ReturnType<typeof createClient<Dat
     return supabaseInstance
   }
   
+  // Detect if running on Vercel
+  const isVercel = process.env.VERCEL_ENV || process.env.VERCEL_URL
+  
   supabaseInstance = createClient<Database>(supabaseUrl, supabaseAnonKey, {
     auth: {
       persistSession: true,
@@ -36,13 +39,16 @@ export function createClientSupabaseClient(): ReturnType<typeof createClient<Dat
     global: {
       headers: {
         'x-client-info': 'badminton-app@1.0.0',
-        // Chrome-specific headers for better Vercel compatibility
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
+        // Vercel-specific headers for better connectivity
+        ...(isVercel && {
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+          'x-vercel-deployment': process.env.VERCEL_ENV || 'unknown',
+        }),
       },
     },
     realtime: {
-      timeout: 5000, // Shorter timeout for better Chrome compatibility on Vercel
+      timeout: isVercel ? 3000 : 10000, // Much shorter timeout for Vercel
     },
   })
   
