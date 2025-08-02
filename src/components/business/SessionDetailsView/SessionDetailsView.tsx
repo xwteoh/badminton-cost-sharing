@@ -14,6 +14,7 @@ export interface SessionDetailsViewProps {
     start_time?: string | null
     end_time?: string | null
     location?: string | null
+    shuttlecocks_used?: number | null
     court_cost?: number
     shuttlecock_cost?: number
     other_costs?: number
@@ -107,7 +108,7 @@ export function SessionDetailsView({
               </span>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 text-sm">
               <div className="flex items-center space-x-2">
                 <span className="text-gray-500">📅</span>
                 <div>
@@ -150,6 +151,16 @@ export function SessionDetailsView({
                   <p className="text-gray-600">Players</p>
                   <p className="font-medium text-gray-900">
                     {session.status === 'completed' ? participants.length : session.player_count} players
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <span className="text-gray-500">🏸</span>
+                <div>
+                  <p className="text-gray-600">Shuttlecocks</p>
+                  <p className="font-medium text-gray-900">
+                    {session.shuttlecocks_used ? `${session.shuttlecocks_used} used` : 'Not recorded'}
                   </p>
                 </div>
               </div>

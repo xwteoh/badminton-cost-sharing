@@ -50,6 +50,12 @@ CREATE TABLE sessions (
   start_time TIME,
   end_time TIME,
   location TEXT,
+  -- Rate storage for accurate data retrieval
+  court_rate_per_hour DECIMAL(10,2) CHECK (court_rate_per_hour >= 0),
+  shuttlecock_rate_each DECIMAL(10,2) CHECK (shuttlecock_rate_each >= 0),
+  shuttlecocks_used INTEGER CHECK (shuttlecocks_used >= 0),
+  hours_played DECIMAL(4,2) CHECK (hours_played >= 0),
+  -- Cost calculations (backward compatibility)
   court_cost DECIMAL(10,2) NOT NULL CHECK (court_cost >= 0),
   shuttlecock_cost DECIMAL(10,2) NOT NULL DEFAULT 0 CHECK (shuttlecock_cost >= 0),
   other_costs DECIMAL(10,2) NOT NULL DEFAULT 0 CHECK (other_costs >= 0),

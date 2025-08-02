@@ -222,6 +222,12 @@ export default function RecordSessionPage() {
         start_time: sessionData.startTime || null,
         end_time: sessionData.endTime || null,
         location: sessionData.location,
+        // Store original rates for accurate data retrieval
+        court_rate_per_hour: parseFloat(sessionData.courtRatePerHour),
+        shuttlecock_rate_each: parseFloat(sessionData.shuttlecockRateEach),
+        shuttlecocks_used: sessionData.shuttlecocksUsed,
+        hours_played: sessionData.hoursPlayed,
+        // Calculated totals (backward compatibility)
         court_cost: courtCost,
         shuttlecock_cost: shuttlecockCost,
         other_costs: parseFloat(sessionData.otherCosts),

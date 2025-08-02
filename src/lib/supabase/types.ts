@@ -117,6 +117,10 @@ export interface Database {
           start_time: string | null
           end_time: string | null
           location: string | null
+          court_rate_per_hour: number | null
+          shuttlecock_rate_each: number | null
+          shuttlecocks_used: number | null
+          hours_played: number | null
           court_cost: number
           shuttlecock_cost: number
           other_costs: number
@@ -136,6 +140,10 @@ export interface Database {
           start_time?: string | null
           end_time?: string | null
           location?: string | null
+          court_rate_per_hour?: number | null
+          shuttlecock_rate_each?: number | null
+          shuttlecocks_used?: number | null
+          hours_played?: number | null
           court_cost: number
           shuttlecock_cost?: number
           other_costs?: number
@@ -153,6 +161,10 @@ export interface Database {
           start_time?: string | null
           end_time?: string | null
           location?: string | null
+          court_rate_per_hour?: number | null
+          shuttlecock_rate_each?: number | null
+          shuttlecocks_used?: number | null
+          hours_played?: number | null
           court_cost?: number
           shuttlecock_cost?: number
           other_costs?: number

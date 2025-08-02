@@ -66,6 +66,9 @@ export function SessionForm({
     notes: '',
     ...initialData
   })
+  
+  // Debug log to verify initial data is applied correctly
+  console.log('🔧 SessionForm initialized with shuttlecocksUsed:', formData.shuttlecocksUsed, 'from initialData:', initialData?.shuttlecocksUsed)
 
   const [costBreakdown, setCostBreakdown] = useState<UsageCostBreakdown | null>(null)
   const [errors, setErrors] = useState<Partial<Record<keyof SessionFormData, string>>>({})
@@ -177,14 +180,14 @@ export function SessionForm({
     // Estimate ~2 shuttlecocks per hour (typical badminton usage)
     const estimatedShuttlecocks = Math.max(1, Math.round(formData.hoursPlayed * 2))
     
-    // Only update if current value is default (6) or if it's the initial load
-    if (formData.shuttlecocksUsed === 6 || !shuttlecockManuallySet) {
+    // Only update if current value is default (6), not if we have initialData
+    if (formData.shuttlecocksUsed === 6 && !shuttlecockManuallySet && !initialData?.shuttlecocksUsed) {
       setFormData(prev => ({
         ...prev,
         shuttlecocksUsed: estimatedShuttlecocks
       }))
     }
-  }, [settings, formData.hoursPlayed, shuttlecockManuallySet])
+  }, [settings, formData.hoursPlayed, shuttlecockManuallySet, initialData?.shuttlecocksUsed])
 
   // Real-time cost calculation
   useEffect(() => {

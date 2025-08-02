@@ -201,6 +201,12 @@ export default function EditSessionPage() {
         start_time: sessionFormData.startTime || null,
         end_time: sessionFormData.endTime || null,
         location: sessionFormData.location,
+        // Store original rates for accurate data retrieval
+        court_rate_per_hour: parseFloat(sessionFormData.courtRatePerHour),
+        shuttlecock_rate_each: parseFloat(sessionFormData.shuttlecockRateEach),
+        shuttlecocks_used: sessionFormData.shuttlecocksUsed,
+        hours_played: sessionFormData.hoursPlayed,
+        // Calculated totals (backward compatibility)
         court_cost: courtCost,
         shuttlecock_cost: shuttlecockCost,
         other_costs: otherCosts,
@@ -244,9 +250,34 @@ export default function EditSessionPage() {
 
   // Create prefilled data object from existing session
   const prefilledData: Partial<SessionFormData> | undefined = sessionData ? (() => {
-    const hoursPlayed = sessionData.start_time && sessionData.end_time 
-      ? calculateSessionDuration(sessionData.start_time, sessionData.end_time)
-      : 0
+    // Use stored hours_played if available, otherwise calculate from times
+    const hoursPlayed = sessionData.hours_played ?? 
+      (sessionData.start_time && sessionData.end_time 
+        ? calculateSessionDuration(sessionData.start_time, sessionData.end_time)
+        : 0)
+    
+    // Use stored rates if available, otherwise fall back to reverse-calculation
+    const courtRatePerHour = sessionData.court_rate_per_hour?.toString() ?? 
+      (sessionData.start_time && sessionData.end_time && sessionData.court_cost && hoursPlayed > 0
+        ? (sessionData.court_cost / hoursPlayed).toFixed(2)
+        : '50.00')
+    
+    // Debug logging to identify the issue
+    console.log('🐛 Debug - shuttlecocks_used from DB:', sessionData.shuttlecocks_used)
+    console.log('🐛 Debug - shuttlecock_cost:', sessionData.shuttlecock_cost)
+    console.log('🐛 Debug - shuttlecock_rate_each:', sessionData.shuttlecock_rate_each)
+    
+    const shuttlecocksUsed = sessionData.shuttlecocks_used ?? 
+      (sessionData.shuttlecock_cost && sessionData.shuttlecock_rate_each 
+        ? Math.round(sessionData.shuttlecock_cost / sessionData.shuttlecock_rate_each)
+        : Math.max(1, Math.floor(hoursPlayed * 2))) // Fallback estimate
+    
+    const shuttlecockRateEach = sessionData.shuttlecock_rate_each?.toString() ?? 
+      (sessionData.shuttlecock_cost && shuttlecocksUsed > 0
+        ? (sessionData.shuttlecock_cost / shuttlecocksUsed).toFixed(2)
+        : '5.00') // Fallback default
+    
+    console.log('🎯 Final calculated shuttlecocksUsed:', shuttlecocksUsed)
     
     return {
       sessionDate: sessionData.session_date,
@@ -254,15 +285,10 @@ export default function EditSessionPage() {
       endTime: sessionData.end_time ? sessionData.end_time.substring(0, 5) : '',
       location: sessionData.location || '',
       hoursPlayed,
-      // Calculate rates from existing costs
-      courtRatePerHour: sessionData.start_time && sessionData.end_time && sessionData.court_cost 
-        ? (sessionData.court_cost / hoursPlayed).toFixed(2)
-        : '50.00',
-      // Try to reverse-calculate shuttlecocks used, or default to a reasonable estimate
-      shuttlecocksUsed: sessionData.shuttlecock_cost && sessionData.shuttlecock_cost > 0
-        ? Math.round(sessionData.shuttlecock_cost / 5) // Assume $5 per shuttlecock
-        : Math.max(1, Math.floor(hoursPlayed * 2)), // Estimate: 2 shuttlecocks per hour
-      shuttlecockRateEach: '5.00', // Default rate
+      // Use stored rates for perfect accuracy
+      courtRatePerHour,
+      shuttlecocksUsed,
+      shuttlecockRateEach,
       otherCosts: (sessionData.other_costs || 0).toFixed(2),
       selectedPlayerIds: participants
         .filter(p => !p.player.is_temporary)
